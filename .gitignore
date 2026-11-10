@@ -1,0 +1,5 @@
+/.sources/
+/.cache/
+/node_modules/
+/public/catalog.next.json
+/dist/

@@ -1,0 +1,17 @@
+{
+  "name": "frametracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.cjs",
+    "build:win": "node scripts/build-windows.mjs",
+    "test": "node --test",
+    "test:win": "node scripts/verify-windows.mjs",
+    "update-catalog": "node scripts/update-catalog.mjs"
+  },
+  "devDependencies": {
+    "lzma": "2.3.2",
+    "postject": "1.0.0-alpha.6"
+  }
+}
