@@ -48,6 +48,24 @@ test('catalog IDs and Prime listings are complete, excluding the Founders exclus
   }
 });
 
+test('catalog includes English recipe labels and editorial acquisition notes', () => {
+  const cyrillic = /\p{Script=Cyrillic}/u;
+  for (const { name, recipe } of catalog.frames) {
+    for (const part of flatten(recipe)) {
+      assert.ok(part.en, name + ' / ' + part.name);
+      assert.doesNotMatch(part.en, cyrillic);
+      for (const drop of part.drops) {
+        if (!cyrillic.test(drop.where)) continue;
+        assert.ok(drop.en, drop.where);
+        assert.doesNotMatch(drop.en, cyrillic);
+      }
+    }
+  }
+  for (const material of Object.values(catalog.materials)) {
+    assert.ok(material.en, material.name);
+  }
+});
+
 test('price estimate keeps unknown prices separate and uses missing parts when cheaper', () => {
   const prime = frame('Equinox Prime');
   const [root, chassis, neuroptics, systems] = flatten(prime.recipe);

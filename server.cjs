@@ -69,6 +69,7 @@ async function main() {
   const files = {
     '/': ['index.html', 'text/html'], '/style.css': ['style.css', 'text/css'],
     '/app.js': ['app.js', 'text/javascript'], '/model.js': ['model.js', 'text/javascript'],
+    '/i18n.js': ['i18n.js', 'text/javascript'],
     '/catalog.json': ['catalog.json', 'application/json'], '/mark.svg': ['mark.svg', 'image/svg+xml'],
   };
   function json(res, data, status = 200) {

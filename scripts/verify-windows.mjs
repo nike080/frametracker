@@ -59,6 +59,7 @@ try {
   const catalog = await (await fetch(url + '/catalog.json')).json();
   const frame = catalog.frames.find(frame => frame.name === 'Equinox Prime');
   assert.equal(await (await fetch(url)).status, 200);
+  assert.match(await (await fetch(url + '/i18n.js')).text(), /export function setLanguage/);
   assert.equal((await get(url)).state, null);
   const state = { frames: { [frame.id]: { done: true, paid: 72, parts: { [frame.recipe.id]: 1 } } }, stock: { credits: 14100 } };
   assert.equal((await put(url, null, state, 'https://example.com')).status, 403);

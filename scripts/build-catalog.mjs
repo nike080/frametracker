@@ -14,14 +14,21 @@ const items = index([...misc, ...resources, ...components, ...frames], 'uniqueNa
 const byResult = index(recipes.ExportRecipes, 'resultType');
 const byMarket = index(market.data, 'gameRef');
 const marketNames = new Map(market.data.map(item => [item.i18n.en.name.toLowerCase(), item]));
-const clan = 'Лаборатория Тэнно в додзё клана. Купите копию исследованного чертежа.';
+const sourceNote = (where, en, chance) => ({ where, en, chance });
+const clan = sourceNote('Лаборатория Тэнно в додзё клана. Купите копию исследованного чертежа.',
+  'Tenno Lab in the Clan Dojo. Replicate the researched blueprint.');
 const farm = {
   'Banshee': clan, 'Nezha': clan, 'Volt': clan, 'Wukong': clan, 'Zephyr': clan,
-  'Dagath': 'Лощина Дагас (Dagath’s Hollow) в додзё. Для крафта соберите Vainthorn в миссии Бездны (Abyssal Zone) на Церере.',
-  'Grendel': 'Купите локаторы частей у Арбитров Гексиса за Vitus Essence. Каждый открывает отдельную миссию на Европе.',
-  'Kullervo': 'Победите Kullervo в Kullervo’s Hold в Дувири во время спиралей Гнева, Страха или Печали. Обменяйте Kullervo’s Bane у Acrithis.',
-  'Vauban': 'Магазин Nightwave. Обменяйте кредиты текущего сезона на чертёж.',
-  'Yareli': 'Комната Bash Lab в додзё клана. Скопируйте исследованный чертёж.',
+  'Dagath': sourceNote('Лощина Дагас (Dagath’s Hollow) в додзё. Для крафта соберите Vainthorn в миссии Бездны (Abyssal Zone) на Церере.',
+    'Dagath’s Hollow in the Clan Dojo. Collect Vainthorn from the Abyssal Zone mission on Ceres for crafting.'),
+  'Grendel': sourceNote('Купите локаторы частей у Арбитров Гексиса за Vitus Essence. Каждый открывает отдельную миссию на Европе.',
+    'Buy part locators from the Arbiters of Hexis with Vitus Essence. Each unlocks a separate mission on Europa.'),
+  'Kullervo': sourceNote('Победите Kullervo в Kullervo’s Hold в Дувири во время спиралей Гнева, Страха или Печали. Обменяйте Kullervo’s Bane у Acrithis.',
+    'Defeat Kullervo at Kullervo’s Hold in Duviri during the Anger, Fear, or Sorrow Spirals. Trade Kullervo’s Bane with Acrithis.'),
+  'Vauban': sourceNote('Магазин Nightwave. Обменяйте кредиты текущего сезона на чертёж.',
+    'Nightwave Cred Offerings. Trade the current season’s Cred for the blueprint.'),
+  'Yareli': sourceNote('Комната Bash Lab в додзё клана. Скопируйте исследованный чертёж.',
+    'Bash Lab in the Clan Dojo. Replicate the researched blueprint.'),
 };
 const quest = {
   'Chroma': 'The New Strange', 'Cyte-09': 'The Hex', 'Excalibur Umbra': 'The Sacrifice',
@@ -29,10 +36,12 @@ const quest = {
   'Mirage': 'Hidden Messages', 'Qorvex': 'Whispers in the Walls', 'Yareli': 'Waverider',
 };
 const blueprintOverrides = {
-  'Grendel': 'Внутриигровой магазин.',
-  'Limbo': 'Внутриигровой магазин. Чертежи деталей выдаются за The Limbo Theorem.',
-  'Mirage': 'Внутриигровой магазин. Чертежи деталей выдаются за Hidden Messages.',
-  'Yareli': 'Награда за квест Waverider.',
+  'Grendel': sourceNote('Внутриигровой магазин.', 'In-game Market.'),
+  'Limbo': sourceNote('Внутриигровой магазин. Чертежи деталей выдаются за The Limbo Theorem.',
+    'In-game Market. The Limbo Theorem awards the component blueprints.'),
+  'Mirage': sourceNote('Внутриигровой магазин. Чертежи деталей выдаются за Hidden Messages.',
+    'In-game Market. Hidden Messages awards the component blueprints.'),
+  'Yareli': sourceNote('Награда за квест Waverider.', 'Reward from the Waverider quest.'),
 };
 const partsRu = {
   Blueprint: 'Основной чертёж', Chassis: 'Каркас', Neuroptics: 'Нейрооптика', Systems: 'Система',
@@ -82,20 +91,31 @@ function material(id, count) {
     drops: [...new Set((item?.drops ?? []).map(drop => drop.location))].slice(0, 8) };
   return { id, count };
 }
-function acquisition(frame, item, recipe, root) {
-  if (frame.name === 'Equinox' && !root) return [{ where: 'Titania, Уран · Тил Регор. За победу выдаётся по одному чертежу для Дня и Ночи.', chance: item?.drops?.[0]?.chance }];
-  if (root && blueprintOverrides[frame.name]) return [{ where: blueprintOverrides[frame.name] }];
-  if (farm[frame.name] && !(root && frame.name === 'Yareli')) return [{ where: farm[frame.name] }];
-  if (frame.name === 'Chroma' && root) return [{ where: 'Награда за квест The New Strange. Повторный чертёж у Цефалона Симэриса.' }];
-  if (frame.name === 'Chroma' && item?.name === 'Neuroptics') return [{ where: 'Награда за открытие узла Урана. Повторный чертёж у Цефалона Симэриса.' }];
-  const drops = (item?.drops ?? []).filter(drop => drop.location && !/ Relic(?:$| \()/.test(drop.location));
-  if (root && quest[frame.name] && !drops.some(drop => !drop.location.startsWith('Cephalon Simaris'))) {
-    drops.unshift({ location: 'Награда за квест ' + quest[frame.name] });
+const questReward = name => sourceNote('Награда за квест ' + name, 'Reward from the ' + name + ' quest');
+function acquisition(frame, item, root) {
+  if (frame.name === 'Equinox' && !root) return [sourceNote(
+    'Titania, Уран · Тил Регор. За победу выдаётся по одному чертежу для Дня и Ночи.',
+    'Titania, Uranus · Tyl Regor. Defeating him awards a Day Aspect or Night Aspect blueprint.',
+    item?.drops?.[0]?.chance)];
+  if (root && blueprintOverrides[frame.name]) return [blueprintOverrides[frame.name]];
+  if (farm[frame.name]) return [farm[frame.name]];
+  if (frame.name === 'Chroma' && root) return [sourceNote(
+    'Награда за квест The New Strange. Повторный чертёж у Цефалона Симэриса.',
+    'Reward from The New Strange. Additional blueprints are available from Cephalon Simaris.')];
+  if (frame.name === 'Chroma' && item?.name === 'Neuroptics') return [sourceNote(
+    'Награда за открытие узла Урана. Повторный чертёж у Цефалона Симэриса.',
+    'Reward from unlocking the Uranus Junction. Additional blueprints are available from Cephalon Simaris.')];
+  const drops = (item?.drops ?? []).filter(drop => drop.location && !/ Relic(?:$| \()/.test(drop.location))
+    .map(drop => ({ where: drop.location, chance: drop.chance }));
+  if (root && quest[frame.name] && !drops.some(drop => !drop.where.startsWith('Cephalon Simaris'))) {
+    drops.unshift(questReward(quest[frame.name]));
   }
-  if (root && frame.bpCost && !frame.isPrime) drops.unshift({ location: 'Внутриигровой магазин · ' + frame.bpCost.toLocaleString('ru') + ' кредитов' });
-  if (!drops.length && root && quest[frame.name]) drops.push({ location: 'Награда за квест ' + quest[frame.name] });
-  if (!drops.length && frame.name === 'Uriel' && root) drops.push({ location: 'Награда за квест The Old Peace.' });
-  return [...new Map(drops.map(drop => [drop.location, { where: drop.location, chance: drop.chance }])).values()];
+  if (root && frame.bpCost && !frame.isPrime) drops.unshift(sourceNote(
+    'Внутриигровой магазин · ' + frame.bpCost.toLocaleString('ru') + ' кредитов',
+    'In-game Market · ' + frame.bpCost.toLocaleString('en-US') + ' Credits'));
+  if (!drops.length && frame.name === 'Uriel' && root) drops.push(sourceNote(
+    'Награда за квест The Old Peace.', 'Reward from The Old Peace.'));
+  return [...new Map(drops.map(drop => [drop.where, drop])).values()];
 }
 function tree(frame, recipe, count = 1, root = true) {
   const item = items.get(root ? recipe.uniqueName : recipe.resultType);
@@ -103,12 +123,13 @@ function tree(frame, recipe, count = 1, root = true) {
   const suffix = Object.entries({ Helmet: 'Neuroptics', Chassis: 'Chassis', Systems: 'Systems' })
     .find(([suffix]) => id.endsWith(suffix + 'Component'))?.[1];
   const part = root ? 'Blueprint' : item?.name ?? suffix ?? id;
-  const aspect = /\/Anima(?:Helmet|Chassis|Systems)/.test(recipe.resultType) ? 'Ночь' :
-    /\/Animus(?:Helmet|Chassis|Systems)/.test(recipe.resultType) ? 'День' : '';
-  const partLabel = [partsRu[part] ?? part, aspect].filter(Boolean).join(' · ');
+  const [aspectRu, aspectEn] = /\/Anima(?:Helmet|Chassis|Systems)/.test(recipe.resultType) ? ['Ночь', 'Night'] :
+    /\/Animus(?:Helmet|Chassis|Systems)/.test(recipe.resultType) ? ['День', 'Day'] : [];
+  const partLabel = [partsRu[part] ?? part, aspectRu].filter(Boolean).join(' · ');
+  const en = [root ? 'Main blueprint' : part, aspectEn].filter(Boolean).join(' · ');
   const result = {
-    id: recipe.uniqueName, name: partLabel, count, time: recipe.buildTime,
-    drops: acquisition(frame, item, recipe, root), parts: [], materials: [],
+    id: recipe.uniqueName, name: partLabel, en, count, time: recipe.buildTime,
+    drops: acquisition(frame, item, root), parts: [], materials: [],
   };
   if (frame.isPrime) {
     const tradeName = frame.name + (root ? ' Blueprint' : ' ' + part + ' Blueprint');

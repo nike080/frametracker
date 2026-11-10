@@ -12,25 +12,31 @@
 </head>
 <body>
   <header class="top"><div class="wrap top-inner">
-    <a class="brand" href="#catalog"><img src="/mark.svg" alt=""><span>FRAME<span>TRACKER</span><small>АРСЕНАЛ ТЭННО</small></span></a>
-    <nav aria-label="Разделы">
-      <a href="#catalog" data-tab="catalog">Каталог</a>
-      <a href="#inventory" data-tab="inventory">Инвентарь</a>
-      <a href="#summary" data-tab="summary">Сводка</a>
+    <a class="brand" href="#catalog"><img src="/mark.svg" alt=""><span>FRAME<span>TRACKER</span><small data-text="brand">АРСЕНАЛ ТЭННО</small></span></a>
+    <nav aria-label="Разделы" data-label="sections">
+      <a href="#catalog" data-tab="catalog" data-text="catalog">Каталог</a>
+      <a href="#inventory" data-tab="inventory" data-text="inventory">Инвентарь</a>
+      <a href="#summary" data-tab="summary" data-text="summary">Сводка</a>
     </nav>
-    <details class="backup"><summary>Данные</summary><div>
-      <span id="save-status" class="small" role="status"></span>
-      <button id="export">Экспорт прогресса</button>
-      <button id="import">Импорт прогресса</button>
-      <input id="file" type="file" accept=".json,application/json" hidden>
-    </div></details>
+    <div class="top-actions">
+      <details class="backup"><summary data-text="data">Данные</summary><div>
+        <span id="save-status" class="small" role="status"></span>
+        <button id="export" data-text="export">Экспорт прогресса</button>
+        <button id="import" data-text="import">Импорт прогресса</button>
+        <input id="file" type="file" accept=".json,application/json" hidden>
+      </div></details>
+      <select id="language" aria-label="Язык" data-label="language">
+        <option value="ru" lang="ru">RU</option>
+        <option value="en" lang="en">EN</option>
+      </select>
+    </div>
   </div></header>
   <main class="wrap" id="app"><p class="muted">Загружаем арсенал…</p></main>
   <dialog id="detail" aria-labelledby="frame-title"></dialog>
   <div id="notice" role="status" aria-live="polite"></div>
   <footer class="wrap">
     <span>FRAME<span class="accent">TRACKER</span> <span class="muted">/</span> <a id="game-version" href="https://www.warframe.com/en/patch-notes" target="_blank" rel="noreferrer">Warframe</a></span>
-    <span><a href="https://github.com/WFCD/warframe-items" target="_blank" rel="noreferrer">WFCD</a> · <a href="https://www.warframe.com/droptables" target="_blank" rel="noreferrer">Таблицы добычи</a> · <a href="https://warframe.market/" target="_blank" rel="noreferrer">Warframe.market</a></span>
+    <span><a href="https://github.com/WFCD/warframe-items" target="_blank" rel="noreferrer">WFCD</a> · <a href="https://www.warframe.com/droptables" target="_blank" rel="noreferrer" data-text="dropTables">Таблицы добычи</a> · <a href="https://warframe.market/" target="_blank" rel="noreferrer">Warframe.market</a></span>
   </footer>
 </body>
 </html>
