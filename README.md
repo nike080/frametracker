@@ -1,39 +1,92 @@
-
 # FrameTracker
 
-Личный каталог варфреймов, рецептов и Prime-реликвий. Текущая версия игры отображается в каталоге и внизу каждой страницы.
+A personal Warframe collection tracker for planning builds, farming parts, and keeping track of Platinum spending. Track standard and Prime Warframes, their blueprints and components, crafting materials, and Prime relics in one place.
 
-Переключатель **RU / EN** в правом верхнем углу доступен на всех страницах. По умолчанию используется русский язык. Браузер запоминает выбранный язык для текущего адреса приложения.
+FrameTracker is an early version looking for player feedback. English and Russian are available on every page through the **RU / EN** switch in the top-right corner. The default language is Russian; your browser remembers your choice for the current app address.
 
-## Переносимый выпуск Windows
+## Try it from source
 
-Откройте `dist/FrameTracker.exe` двойным щелчком. FrameTracker откроется в браузере. Оставьте окно FrameTracker открытым, пока пользуетесь приложением, и закройте его для выхода.
+Requires **Node.js 24**. No dependency installation is needed to run the app.
 
-Прогресс и кеш котировок хранятся в `%LOCALAPPDATA%\FrameTracker`. При обновлении закройте старый экземпляр и замените EXE. Перемещение файла в другую папку также сохраняет доступ к данным под тем же пользователем Windows. Статус сохранения виден в меню **Данные**.
+```sh
+npm start
+```
 
-При первом запуске на прежнем адресе и в прежнем профиле браузера сохранение переносится автоматически. Если открывается другой браузер или порт, используйте **Данные → Экспорт прогресса** в старом приложении и **Импорт прогресса** в новом. Этот же способ подходит для другого ПК.
+Open [http://127.0.0.1:4187/](http://127.0.0.1:4187/) in your browser. Keep the terminal open while using FrameTracker; press Ctrl+C to stop it.
 
-Для сборки релиза на Windows x64 с Node.js 24 выполните `npm ci` и `npm run build:win`. Проверка готового файла — `npm run test:win`. Сборка без подписи может показать предупреждение Windows при скачивании. Подпись дистрибутива настраивается отдельно.
+## What you can track
 
-## Запуск из исходников
+- Your collection of standard, Prime, and Umbra Warframes.
+- Blueprints, components, crafting requirements, and manually entered material stock.
+- Farming locations and Prime relic information from the bundled catalog.
+- Prime component and set price estimates from Warframe.market.
+- Collection totals and Platinum spending, with JSON progress export and import.
 
-Откройте терминал в папке проекта и запустите `npm start`. Откройте [FrameTracker](http://127.0.0.1:4187/). Нужен Node.js 24. Для запуска установка пакетов не требуется.
+This is a manual tracker: it does not connect to your Warframe account or automatically read your in-game inventory.
 
-При запуске из исходников прогресс хранится в браузере на этом адресе. Меню **Данные** позволяет сохранить копию в JSON и восстановить её.
+## Windows portable build
 
-## Как устроены цены
+To build a standalone executable on **Windows x64 with Node.js 24**:
 
-В карточке Prime подгружаются цены деталей и набора. Во вкладке **Сводка** нажмите **Загрузить цены** для всего каталога. Первая полная загрузка может занять несколько минут. Используется среднее до пяти самых дешёвых активных предложений о продаже для PC с кроссплеем. Цены кешируются на сутки. Сводка показывает покрытие и оценивает расходы на собранные Prime по текущим ценам, если фактическая сумма не введена.
+```sh
+npm ci
+npm run build:win
+npm run test:win
+```
 
-Общая потребность в материалах считается по всем незавершённым рецептам. Готовые детали исключают свои рецепты. Запасы вводятся вручную. Готовые ингредиенты сторонних рецептов, например нейрооптика Volt для Chroma, учитываются отдельными строками инвентаря.
+Double-click `dist/FrameTracker.exe`. FrameTracker opens in your browser. Keep its window open while using the app and close it to exit. The executable is unsigned, so Windows may display a warning when it is downloaded.
 
-## Обновление каталога
+The portable app stores progress and cached prices in `%LOCALAPPDATA%\FrameTracker`. To update, close the old instance and replace the executable. Moving the executable to another folder keeps your data available under the same Windows account.
 
-1. Сверьте целевую PC-версию с [патчноутами Warframe](https://www.warframe.com/en/patch-notes).
-2. Один раз выполните `npm ci` для установки инструмента чтения игрового манифеста.
-3. Выполните `npm run update-catalog -- <версия>`. Команда скачивает текущие данные и печатает дельту относительно сохранённого снимка. Аргумент задаёт проверенную метку версии для текущих источников. Он не скачивает архив конкретного патча.
-4. Сверьте предупреждения и изменения в `public/catalog.json`, выполните `npm test` и перезапустите приложение. При изменении игровых идентификаторов проверьте миграцию сохранённого прогресса.
+## Your progress
 
-В снимке хранятся версия игры, дата и имя официального манифеста рецептов. Используются [игровой экспорт Digital Extremes](https://origin.warframe.com/PublicExport/index_en.txt.lzma), [каталог WFCD](https://github.com/WFCD/warframe-items), [таблицы добычи WFCD](https://github.com/WFCD/warframe-drop-data) и [Warframe.market](https://docs.warframe.market/). Портреты загружаются с CDN WFCD. Места и шансы в снимке могут отставать от патча до обновления таблиц источника.
+When running from source, progress is saved in your browser for the current app address. Use **Data → Export progress** to make a JSON backup and **Import progress** to restore it or move it to another browser or computer.
 
-Требования и история реализации хранятся в `openspec/`.
+The portable build stores progress in your Windows profile. Existing browser progress is migrated automatically when you first open the portable app at the same address in the same browser profile. If the browser or port changes, export progress from the old instance and import it into the new one. The Data menu shows the save status.
+
+The app runs locally. Network requests are used for market prices and externally hosted portraits; updating the catalog also downloads data from its sources.
+
+## Prices and material totals
+
+Opening a Prime Warframe loads component and set prices. In **Summary**, choose **Load prices** to fetch prices across the catalog. The first full load can take several minutes.
+
+Prices estimate the average of up to five of the cheapest active PC crossplay sell offers and are cached for one day. They are estimates, not guaranteed trade prices. The summary shows price coverage and estimates the cost of collected Prime Warframes at current prices unless you enter the actual amount spent.
+
+Material totals cover unfinished recipes. Completed components remove their recipes from the remaining requirements. Inventory quantities are entered manually. Crafted ingredients used by other recipes, such as Volt Neuroptics for Chroma, have separate inventory entries.
+
+## Feedback and bug reports
+
+Please open a GitHub issue with:
+
+- What you were trying to do, what happened, and what you expected.
+- Steps to reproduce the problem.
+- Your operating system, browser, and whether you used the source or portable build.
+- For catalog problems, the Warframe, component, relic, or material involved and the catalog version shown in the app.
+
+Screenshots are helpful. Review exported progress before sharing it publicly; it includes your collection and manually entered data. Feedback on the English translation, farming information, progress saving, and usability is especially welcome.
+
+## Development
+
+```sh
+npm test
+```
+
+To refresh the bundled catalog:
+
+1. Check the target PC game version against the [Warframe patch notes](https://www.warframe.com/en/patch-notes).
+2. Run `npm ci` to install the manifest-reading and build tools.
+3. Run `npm run update-catalog -- <version>`. This downloads current source data and prints changes relative to the saved snapshot. The argument labels the verified version; it does not download a historical patch.
+4. Review warnings and changes in `public/catalog.json`, run `npm test`, and restart the app. Check saved-progress migration if game identifiers change.
+
+The snapshot records the game version, update date, and official recipe manifest name. Farming locations and drop chances may lag behind game patches until upstream sources update.
+
+Requirements and implementation notes are kept in `openspec/`.
+
+## Data sources and credits
+
+- [Digital Extremes Public Export](https://origin.warframe.com/PublicExport/index_en.txt.lzma) for official recipe data.
+- [WFCD warframe-items](https://github.com/WFCD/warframe-items) for catalog data and the WFCD CDN for portraits.
+- [WFCD warframe-drop-data](https://github.com/WFCD/warframe-drop-data) for drop tables.
+- [Warframe.market](https://warframe.market/) for market price estimates.
+
+FrameTracker is an unofficial fan project and is not affiliated with or endorsed by Digital Extremes or Warframe.market. Warframe and its associated assets belong to their respective owners.
