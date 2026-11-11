@@ -4,7 +4,20 @@ A personal Warframe collection tracker for planning builds, farming parts, and k
 
 FrameTracker is an early version looking for player feedback. English and Russian are available on every page through the **RU / EN** switch in the top-right corner. The default language is Russian; your browser remembers your choice for the current app address.
 
-## Try it from source
+## Download for Windows
+
+**[Download FrameTracker.exe](https://github.com/nike080/frametracker/releases/latest/download/FrameTracker.exe)** · [Release notes and downloads](https://github.com/nike080/frametracker/releases/latest)
+
+Requires **Windows x64**. No installation or Node.js is needed.
+
+1. Download `FrameTracker.exe` using the link above.
+2. Double-click it. The app starts locally and opens in your browser.
+3. Select **EN** in the top-right corner for English.
+4. Keep the FrameTracker window open while using the app; close it to exit.
+
+The executable is unsigned, so Windows may display a warning. Progress is stored in `%LOCALAPPDATA%\FrameTracker`. To update, close the old app and replace the EXE with the new download. Use **Data → Export progress** to back up your collection or move it to another PC.
+
+## Run from source
 
 Requires **Node.js 24**. No dependency installation is needed to run the app.
 
