@@ -23,7 +23,7 @@ const port = probe.address().port;
 await new Promise((resolve, reject) => probe.close(error => error ? reject(error) : resolve()));
 const children = new Set();
 function launch(file, source = false) {
-  const child = spawn(file, source ? [join(root, 'server.cjs')] : ['--no-browser'], {
+  const child = spawn(file, source ? [join(root, 'server.cjs'), '--no-browser'] : ['--no-browser'], {
     cwd: profile, windowsHide: true, env: { ...process.env, LOCALAPPDATA: profile, PORT: String(port) },
   });
   children.add(child);
@@ -65,6 +65,14 @@ try {
   assert.match(themeSource, /export function resolveTheme/);
   assert.match(themeSource, /"id": "nightwave"/);
   assert.match(await (await fetch(url + '/orokin.css')).text(), /prefers-reduced-motion/);
+  for (const name of ['material-icons.json', 'frame-names.js', 'frame-localization.js', 'outside-dismiss.js']) {
+    const response = await fetch(url + '/' + name);
+    assert.equal(response.status, 200, name + ' is embedded');
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), await readFile(join(root, 'public', name)), name + ' matches release source');
+  }
+  const appSource = await (await fetch(url + '/app.js')).text();
+  assert.match(appSource, /from '\.\/frame-localization\.js'/);
+  assert.match(appSource, /installOutsideDismiss\(dialog\)/);
   assert.equal((await get(url)).state, null);
   const state = { frames: { [frame.id]: { done: true, paid: 72, parts: { [frame.recipe.id]: 1 } } }, stock: { credits: 14100 } };
   assert.equal((await put(url, null, state, 'https://example.com')).status, 403);
@@ -88,7 +96,7 @@ try {
   await stop(dev);
   const fallbackDuplicate = launch(original);
   assert.equal((await once(fallbackDuplicate, 'exit'))[0], 0);
-  console.log('Portable Windows smoke test passed: embedded catalog and faction UI assets, save, conflict, repeat launch, fallback port, and moved EXE.');
+  console.log('Portable Windows smoke test passed: FT-17/18/19 embedded assets, catalog and faction UI, save, conflict, repeat launch, fallback port, and moved EXE.');
 } finally {
   await Promise.all([...children].map(stop));
   const storage = join(profile, 'FrameTracker');
