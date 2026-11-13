@@ -186,6 +186,10 @@ const content = '{\n  "gameVersion": ' + JSON.stringify(version) + ',\n  "date":
   ',\n  "source": ' + JSON.stringify(source) + ',\n  "frames": [\n' +
   catalog.map(frame => '    ' + JSON.stringify(frame)).join(',\n') +
   '\n  ],\n  "materials": {\n' + rows(materials) + '\n  },\n  "relicLocations": {\n' + rows(locations) + '\n  }\n}\n';
+const { checkCatalog } = await import('./check-catalog.mjs');
+const report = checkCatalog(JSON.parse(content));
+for (const warning of report.warnings) console.warn('Catalog source warning:', warning);
+if (report.errors.length) throw new Error(report.errors.join('\n'));
 const temp = new URL('catalog.next.json', catalogFile);
 await writeFile(temp, content);
 await rename(temp, catalogFile);

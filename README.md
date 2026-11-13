@@ -55,6 +55,14 @@ The portable app stores progress and cached prices in `%LOCALAPPDATA%\FrameTrack
 
 ### Personal goals
 
+The catalog now includes **Continue collecting**: each active goal shows an explained next step, source details where known, all remaining material requirements, and a personal note. Start with one frame; a full inventory is not required. Notes and the latest recorded change survive restarting and progress export/import.
+
+An empty stock field means **unknown**, while an explicitly entered `0` means a known empty stock. Clear a quantity to mark it unknown again. Advice asks you to check unknown stock instead of claiming a confirmed shortfall. Previously omitted quantities cannot be recovered as known zeros.
+
+Record blueprint acquisition or a crafted component directly from the goal plan. For a known material stock, **Add loot quantity** adds a nonnegative integer. Recording a crafted item does not deduct materials: update remaining stock manually after crafting. Advice follows recipe order, does not reserve stock between goals, and does not claim to be the optimal route.
+
+Source details are based on the bundled catalog snapshot dated **2026-11-10**. Known locations/rotations are displayed; additional requirements and current availability may need checking. Missing relic mission records do not prove a relic is unavailable. Run `node scripts/check-catalog.mjs` to inspect reference errors and source warnings; catalog updates run the same check before replacing the catalog.
+
 Open a Warframe and select **Collect next** to add it to **My goals** in the catalog. Reorder or remove goals there; completed goals stay visible until removed. Ordering does not reserve resources.
 
 Inventory opens in **My goals** mode, showing combined requirements for selected frames and subtracting shared stock once. Switch to **Entire collection** for the original overview. Existing saves start with no goals; goals are included in new exports and imports.
