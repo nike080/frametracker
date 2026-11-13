@@ -1,5 +1,5 @@
 
-import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory } from './model.js';
+import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory, knownStock, nextAction, restoreProgress } from './model.js';
 import { catalogText, language, setLanguage, t } from './i18n.js';
 
 const app = document.querySelector('#app');
@@ -103,33 +103,7 @@ try {
   throw new Error('FrameTracker progress could not be loaded');
 }
 
-function restore(raw) {
-  const record = value => value && typeof value === 'object' && !Array.isArray(value);
-  if (!record(raw) || !record(raw.frames) || !record(raw.stock)) {
-    throw new Error(t('invalidProgress'));
-  }
-  const clean = empty();
-  clean.goals = normalizeGoals(raw.goals, frames);
-  for (const [id, item] of Object.entries(raw.frames)) {
-    if (!id.startsWith('/Lotus/') || !record(item)) continue;
-    const root = byId.get(id)?.recipe?.id;
-    const saved = { done: item.done === true, parts: {} };
-    if (record(item.parts)) {
-      for (const [part, value] of Object.entries(item.parts)) {
-        if (part.startsWith('/Lotus/') && [1, 2].includes(value)) saved.parts[part] = part === root ? 1 : value;
-      }
-    }
-    if (Number.isSafeInteger(item.paid) && item.paid >= 0) saved.paid = item.paid;
-    clean.frames[id] = saved;
-  }
-  for (const [id, value] of Object.entries(raw.stock)) {
-    if (id === 'credits' || id.startsWith('/Lotus/')) {
-      const quantity = amount(value);
-      if (quantity) clean.stock[id] = quantity;
-    }
-  }
-  return clean;
-}
+function restore(raw) { return restoreProgress(raw, frames); }
 function updateSaveAlert() {
   const alert = document.querySelector('#save-alert');
   alert.hidden = !['browserSaveFailed', 'saveFailed', 'saveConflict'].includes(saveMessage);
@@ -233,6 +207,59 @@ function goalsView() {
       [['up', 'goalUp', index === 0], ['down', 'goalDown', index === goals.length - 1], ['remove', 'goalRemove', false]].map(([action, label, disabled]) => '<button data-goal-action="' + action + '" data-goal-id="' + esc(frame.id) + '" aria-label="' + esc(t(label) + ': ' + frame.name) + '"' + (disabled ? ' disabled' : '') + '>' + t(label) + '</button>').join('') + '</div></li>').join('') + '</ol>' : '<p>' + t('noGoals') + '</p>') +
     '<a href="#inventory">' + t('goalResources') + '</a></section>';
 }
+function recordChange(kind, frame) {
+  if (frame) state.lastChange = { kind, frameId: frame.id, at: new Date().toISOString() };
+}
+function sourceView(frame, action) {
+  const node = action.node;
+  const item = action.id ? materials[action.id] : node;
+  const drops = action.id ? item?.drops ?? [] : node?.drops ?? [];
+  const relics = action.id ? [] : node?.relics ?? [];
+  const rows = drops.map(drop => '<li>' + esc(typeof drop === 'string' ? drop : catalogText(drop, 'where')) + '</li>');
+  for (const relic of relics) rows.push('<li>' + esc(relic.name) + ': ' +
+    (relicLocations[relic.name]?.map(place => esc(place.where)).join('; ') || t('sourceUnknown')) + '</li>');
+  return '<details class="source-help"><summary>' + t('sourceHelp') + '</summary><p>' + t('sourceCaution') + '</p>' +
+    (rows.length ? '<ul>' + rows.join('') + '</ul>' : '<p>' + t('sourceUnknown') + '</p>') +
+    '<p>' + t('sourceSnapshot', { date: esc(date) }) + ' · ' + link(item?.wiki || frame.wiki, 'Warframe Wiki') + ' · ' +
+    link('https://github.com/WFCD/warframe-items', 'WFCD') + '</p></details>';
+}
+function assistantView() {
+  const goals = scopedFrames(frames, state, 'goals');
+  if (!goals.length) return '<section class="goals-panel assistant"><h2>' + t('continueBuild') + '</h2><p>' + t('startOneGoal') + '</p></section>';
+  const last = state.lastChange;
+  return '<section class="goals-panel assistant" aria-labelledby="assistant-title"><h2 id="assistant-title">' + t('continueBuild') + '</h2>' +
+    (last ? '<p class="small muted">' + t('lastChange') + ': ' + esc(byId.get(last.frameId)?.name) + ' · ' + t('change_' + last.kind) + ' · ' + esc(new Date(last.at).toLocaleString(locale())) + '</p>' : '') +
+    goals.map(frame => {
+      const action = nextAction(frame, state);
+      const partName = action.node ? catalogText(action.node, 'name') : '';
+      const label = action.id ? catalogText(materials[action.id], 'name') : partName;
+      const quick = (kind, title) => '<button data-quick="' + kind + '" data-action-frame="' + esc(frame.id) + '">' + t(title) + '</button>';
+      let controls = '';
+      if (action.kind === 'acquire') controls = quick('acquire', 'receivedBlueprint');
+      if (action.kind === 'craft') controls = quick('craft', action.root ? 'frameOwned' : 'recordCrafted');
+      if (['check', 'farm'].includes(action.kind)) controls = resourceTable([{ id: action.id, count: action.target }], true) +
+        (knownStock(state, action.id) ? '<label>' + t('addLoot') + ' ' + numberInput('data-loot="' + esc(frame.id) + '"', '', t('addLoot')) + '</label>' : '<p class="small muted">' + t('unknownLootHint') + '</p>');
+      const totals = [...demand([frame], state)].map(([id, count]) => ({ id, count }));
+      return '<article class="goal-plan" data-context="' + esc(frame.id) + '"><h3><button data-frame="' + esc(frame.id) + '">' + esc(frame.name) + '</button></h3>' +
+        '<p class="action-title">' + t('action_' + action.kind) + (label ? ': <strong>' + esc(label) + '</strong>' : '') + '</p>' +
+        '<p class="small muted">' + t('reason_' + action.kind) + '</p>' + controls +
+        (['acquire', 'farm'].includes(action.kind) ? sourceView(frame, action) : '') +
+        (totals.length ? '<details><summary>' + t('goalDeficit') + '</summary>' + resourceTable(totals, true) + '</details>' : '') +
+        '<label class="goal-note">' + t('goalNote') + '<textarea maxlength="2000" data-note="' + esc(frame.id) + '">' + esc(state.notes[frame.id] ?? '') + '</textarea></label></article>';
+    }).join('') + '</section>';
+}
+function quickUpdate(button) {
+  const frame = byId.get(button.dataset.actionFrame);
+  if (!frame || !state.goals.includes(frame.id)) return;
+  const action = nextAction(frame, state);
+  if (!['acquire', 'craft'].includes(action.kind) || action.kind !== button.dataset.quick) return;
+  captureProgress();
+  const saved = state.frames[frame.id] ??= { parts: {} };
+  if (action.kind === 'craft' && action.root) saved.done = true;
+  else saved.parts[action.node.id] = action.kind === 'acquire' ? 1 : 2;
+  recordChange(saved.done ? 'owned' : 'part', frame);
+  void save(); renderPage();
+}
 function catalogView() {
   const done = frames.filter(frame => entry(state, frame).done).length;
   const started = frames.filter(frame => { const p = collected(frame, state); return !p.done && p.have > 0; }).length;
@@ -241,7 +268,7 @@ function catalogView() {
     '<div class="toolbar catalog-toolbar"><label class="search"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="' + t('search') + '" aria-label="' + t('search') + '" aria-describedby="search-hint" value="' + esc(search) + '"></label>' +
     '<div class="segments" aria-label="' + t('frameType') + '">' + [['all',t('all')],['standard',t('standardPlural')],['prime','Prime']].map(([value,label]) => '<button data-group="' + value + '">' + label + '</button>').join('') + '</div>' +
     '<select id="status" aria-label="' + t('collectionStatus') + '"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select><button id="reset-filters">' + t('resetFilters') + '</button></div>' +
-    '<p id="search-hint" class="small muted">' + t('englishNames') + '</p>' + goalsView() + '<p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
+    assistantView() + '<p id="search-hint" class="small muted">' + t('englishNames') + '</p>' + goalsView() + '<p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
     '<p class="catalog-version small muted">' + link('https://www.warframe.com/en/patch-notes', 'Warframe ' + gameVersion) + ' · ' + new Date(date + 'T12:00:00Z').toLocaleDateString(locale(), { timeZone: 'UTC' }) + '</p></section>';
   app.querySelector('#status').value = status;
   renderCards();
@@ -275,18 +302,19 @@ function stage(frame) {
 }
 function stockRow(id, target, withInputs, label = '') {
   const item = materials[id];
-  const stock = state.stock[id] ?? 0;
-  const gap = Math.max(0, target - stock);
+  const known = knownStock(state, id);
+  const stock = known ? state.stock[id] : '';
+  const gap = known ? Math.max(0, target - stock) : null;
   const labelName = catalogText(item, 'name');
   const name = item.wiki ? link(item.wiki, labelName) : esc(labelName);
   return '<tr data-resource="' + esc(id) + '" data-needed="' + target + '"><td><span title="' + esc(item.en) + '">' + name + '</span>' +
     (item.drops?.length ? '<details class="small muted"><summary>' + t('whereToFarm') + '</summary>' + item.drops.map(place => '<div>' + esc(place) + '</div>').join('') + '</details>' : '') +
     '</td><td data-column="' + t('needed') + '">' + n(target) + '</td><td data-column="' + t('inStock') + '">' +
-    (withInputs ? numberInput('data-stock="' + esc(id) + '"', stock, t('stockLabel') + ' ' + labelName) : n(stock)) +
-    '</td><td data-column="' + t('shortfall') + '" data-gap class="' + (gap ? 'gold' : 'accent') + '">' + n(gap) + '</td>' +
+    (withInputs ? numberInput('data-stock="' + esc(id) + '" placeholder="' + t('unknownStock') + '"', stock, t('stockLabel') + ' ' + labelName) : known ? n(stock) : t('unknownStock')) +
+    '</td><td data-column="' + t('shortfall') + '" data-gap class="' + (gap ? 'gold' : 'accent') + '">' + (gap === null ? t('checkStock') : n(gap)) + '</td>' +
     (withInputs ? '<td data-column="' + t('enough') + '"><input class="check" type="checkbox" data-fill="' + esc(id) + '" data-target="' + target +
       '" title="' + t('fillHint') + '" aria-label="' + esc(label + ' ' + t('enoughLabel') + ' ' + labelName) + '"' +
-      (stock >= target && target > 0 ? ' checked' : '') + (target === 0 ? ' disabled' : '') + '></td>' : '') + '</tr>';
+      (known && stock >= target && target > 0 ? ' checked' : '') + (target === 0 ? ' disabled' : '') + '></td>' : '') + '</tr>';
 }
 function resourceTable(rows, withInputs, label = '') {
   if (!rows.length) return '<p class="empty">' + t('materialsAccounted') + '</p>';
@@ -316,7 +344,7 @@ function filterMaterials() {
   for (const row of app.querySelectorAll('[data-resource]')) {
     const item = materials[row.dataset.resource];
     const matches = [catalogText(item, 'name'), item.en].join(' ').toLocaleLowerCase().includes(materialSearch.trim().toLocaleLowerCase());
-    row.hidden = !matches || onlyDeficit && Number(row.dataset.needed) <= (state.stock[row.dataset.resource] ?? 0);
+    row.hidden = !matches || onlyDeficit && (Number(row.dataset.needed) === 0 || knownStock(state, row.dataset.resource) && Number(row.dataset.needed) <= state.stock[row.dataset.resource]);
     if (!row.hidden) visible++;
   }
   app.querySelector('#material-count').textContent = visible ? t('materialCount', { count: n(visible) }) : t('noMaterials');
@@ -512,6 +540,21 @@ function route() {
 }
 function changed(event) {
   const input = event.target;
+  if (input.matches('[data-loot]')) {
+    const frame = byId.get(input.dataset.loot);
+    const action = nextAction(frame, state);
+    if (input.value === '' || !action.id || !knownStock(state, action.id)) return;
+    const value = Number(input.value);
+    if (!Number.isSafeInteger(value) || value < 0 || !Number.isSafeInteger(state.stock[action.id] + value)) return;
+    captureProgress(); state.stock[action.id] += value;
+    recordChange('stock', frame); void save(); renderPage(); return;
+  }
+  if (input.matches('[data-note]')) {
+    captureProgress(); const frame = byId.get(input.dataset.note);
+    if (input.value.trim()) state.notes[frame.id] = input.value.trim().slice(0, 2000);
+    else delete state.notes[frame.id];
+    recordChange('note', frame); void save(); renderPage(); return;
+  }
   if (input.id === 'resource-scope') { resourceScope = input.value; inventoryView(); return; }
   if (input.id === 'status') { status = input.value; renderCards(); return; }
   if (!input.matches('[data-stock], [data-fill], [data-part], #owned, #paid')) return;
@@ -520,23 +563,18 @@ function changed(event) {
   const id = input.dataset.stock ?? input.dataset.fill;
   if (id) {
     const target = Number(input.dataset.target);
-    const value = input.hasAttribute('data-stock') ? amount(input.value) : input.checked ? target : target - 1;
-    state.stock[id] = value;
-    for (const row of document.querySelectorAll('[data-resource="' + CSS.escape(id) + '"]')) {
-      const goal = Number(row.dataset.needed);
-      row.querySelector('[data-stock]').value = value;
-      row.querySelector('[data-fill]').checked = goal > 0 && value >= goal;
-      const gap = row.querySelector('[data-gap]');
-      gap.textContent = n(Math.max(0, goal - value));
-      gap.className = value < goal ? 'gold' : 'accent';
-    }
-    save();
-    if (tab === 'inventory') filterMaterials();
+    if (input.hasAttribute('data-stock') && input.value === '') delete state.stock[id];
+    else state.stock[id] = input.hasAttribute('data-stock') ? amount(input.value) : input.checked ? target : Math.max(0, target - 1);
+    recordChange('stock', byId.get(input.closest('[data-context]')?.dataset.context) ?? byId.get(frameId) ?? scopedFrames(frames, state, 'goals')[0]);
+    void save(); renderPage();
+    if (dialog.open && frame) renderDetail(frame, true);
+    const container = dialog.open ? dialog : app;
+    container.querySelector('[data-stock="' + CSS.escape(id) + '"]')?.focus({ preventScroll: true });
     return;
   }
   else if (frame) {
     const saved = state.frames[frame.id] ??= { parts: {} };
-    if (input.id === 'owned') saved.done = input.checked;
+    if (input.id === 'owned') { saved.done = input.checked; recordChange('owned', frame); }
     if (input.id === 'paid') {
       if (input.value === '') delete saved.paid;
       else saved.paid = amount(input.value);
@@ -544,7 +582,7 @@ function changed(event) {
       save();
       return;
     }
-    if (input.hasAttribute('data-part')) saved.parts[input.dataset.part] = input.type === 'checkbox' ? Number(input.checked) : Number(input.value);
+    if (input.hasAttribute('data-part')) { saved.parts[input.dataset.part] = input.type === 'checkbox' ? Number(input.checked) : Number(input.value); recordChange('part', frame); }
   }
   save();
   if (dialog.open && frame) {
@@ -569,6 +607,7 @@ app.addEventListener('click', event => {
     void save(); catalogView();
     app.querySelector('[data-goal-id="' + CSS.escape(button.dataset.goalId) + '"]')?.focus();
   }
+  if (button.dataset.quick) { quickUpdate(button); return; }
   if (button.dataset.frame) openFrame(button.dataset.frame, button);
   if (button.id === 'reset-filters') { group = 'all'; status = 'all'; search = ''; catalogView(); app.querySelector('#search').focus(); }
   if (button.id === 'deficit-filter') { onlyDeficit = !onlyDeficit; button.setAttribute('aria-pressed', onlyDeficit); filterMaterials(); }
