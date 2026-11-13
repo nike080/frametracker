@@ -18,7 +18,7 @@ try {
   const blob = join(working, 'sea.blob');
   const exe = join(working, 'FrameTracker.exe');
   const assets = Object.fromEntries(
-    ['world-state.js', 'home.js', 'index.html', 'style.css', 'orokin.css', 'themes.js', 'overframe.js', 'app.js', 'i18n.js', 'model.js', 'availability.js', 'catalog.json', 'material-icons.json', 'relic-icons.json', 'frame-names.js', 'frame-localization.js', 'outside-dismiss.js', 'mark.svg'].map(name => [name, resolve(root, 'public', name)])
+    ['relic-library.js', 'world-state.js', 'home.js', 'index.html', 'style.css', 'orokin.css', 'themes.js', 'overframe.js', 'app.js', 'i18n.js', 'model.js', 'availability.js', 'catalog.json', 'material-icons.json', 'relic-icons.json', 'frame-names.js', 'frame-localization.js', 'outside-dismiss.js', 'mark.svg'].map(name => [name, resolve(root, 'public', name)])
   );
   await writeFile(config, JSON.stringify({
     main: resolve(root, 'server.cjs'), output: blob, assets, disableExperimentalSEAWarning: true,

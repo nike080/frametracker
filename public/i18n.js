@@ -35,7 +35,7 @@ const messages = {
   availabilitySort: ['Порядок', 'Order'],
   catalogOrder: ['По алфавиту', 'Alphabetical'],
   availabilityOrder: ['Сначала доступные Prime', 'Available Primes first'],
-  availability_available: ['Все части в ротации', 'All parts available'],
+  availability_available: ['В ротации', 'In rotation'],
   availability_partial: ['Часть в ротации', 'Partially available'],
   availability_vaulted: ['В хранилище', 'Vaulted'],
   availability_unknown: ['Доступность не подтверждена', 'Availability unconfirmed'],

@@ -1,12 +1,14 @@
+import { relicContents } from './relic-library.js';
 import { homeView } from './home.js';
 import { nextReset, countdown } from './world-state.js';
 
-import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory, knownStock, nextAction, restoreProgress } from './model.js';
+import { archiveAvailability, relicPage, helminthEligible, workEntry, refinementLevels, relicLibrary, relicTotal, missingParts, sharedSources, empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory, knownStock, nextAction, restoreProgress } from './model.js';
 import { catalogText, language, setLanguage, t } from './i18n.js';
 import { overframeUrl } from './overframe.js';
 import { themes, resolveTheme, themeTokens } from './themes.js';
 import { frameName, matchesFrame, compareFrames } from './frame-localization.js';
 import { installOutsideDismiss, installMenuOutsideDismiss } from './outside-dismiss.js';
+const L = (ru,en) => language === 'en' ? en : ru;
 const displayFrameName = frame => frameName(frame, language);
 const frameOrder = (a, b) => compareFrames(a, b, language);
 
@@ -242,7 +244,7 @@ function undoButton(id) {
   return '<button id="' + id + '"' + (history.available ? '' : ' disabled') + '>' + t('undoProgress') + '</button>';
 }
 function updateUndo() {
-  for (const button of document.querySelectorAll('#undo-progress, #undo-detail')) button.disabled = !history.available;
+  for (const button of document.querySelectorAll('#undo-progress, #undo-detail, #undo-relic')) button.disabled = !history.available;
 }
 function captureProgress() { history.capture(state); updateUndo(); }
 function undoProgress() {
@@ -255,6 +257,10 @@ function undoProgress() {
 }
 document.querySelector('#undo-progress').addEventListener('click', undoProgress);
 
+function intersectionsView() {
+ const rows=sharedSources(scopedFrames(frames,state,'goals'),state,relicLocations);
+ return '<section class="goals-panel"><h2>'+L('Общий фарм целей','Shared goal farming')+'</h2><p class="muted">'+L('Источники сгруппированы с учётом ротации. Награды альтернативны, выпадение не гарантировано.','Sources include rotation conditions. Rewards are alternatives, not guaranteed drops.')+'</p>'+(rows.length?rows.map(row=>'<details><summary>'+esc(row.where)+'</summary><ul>'+row.rewards.map(r=>'<li>'+esc(displayFrameName(byId.get(r.frameId)))+' · '+esc(catalogText(flatten(byId.get(r.frameId).recipe).find(p=>p.id===r.partId),'name'))+' · '+esc(r.reward)+'</li>').join('')+'</ul></details>').join(''):'<p>'+L('Общих источников для недостающих частей выбранных целей нет.','No shared sources for the missing parts of selected goals.')+'</p>')+'</section>';
+}
 function goalsView() {
   const goals = scopedFrames(frames, state, 'goals');
   return '<section class="goals-panel" aria-labelledby="goals-title"><h2 id="goals-title">' + t('myGoals') + '</h2><p class="small muted">' + t('goalsHint') + '</p>' +
@@ -268,14 +274,14 @@ function recordChange(kind, frame) {
 function availabilityBadge(frame) {
   if (!frame.prime || frame.founder) return '';
   const row = liveAvailability.frames[frame.id];
-  const status = row?.status ?? 'unknown';
+  const status = archiveAvailability(row);
   return '<span class="availability-badge availability-' + status + '">' + t('availability_' + status) +
-    (row && status !== 'unknown' ? ' · ' + row.available + '/' + row.total : '') +
+
     (row?.resurgence ? ' · ' + t('resurgence') : '') + '</span>';
 }
 function availabilityFilters() {
   return '<label class="filter-field">' + t('primeAvailability') + '<select id="availability-filter">' +
-    ['all', 'available', 'partial', 'resurgence', 'vaulted', 'unknown'].map(value => '<option value="' + value + '">' + t(value === 'all' ? 'all' : value === 'resurgence' ? 'resurgence' : 'availability_' + value) + '</option>').join('') + '</select></label>' +
+    ['all', 'available', 'resurgence', 'vaulted'].map(value => '<option value="' + value + '">' + t(value === 'all' ? 'all' : value === 'resurgence' ? 'resurgence' : 'availability_' + value) + '</option>').join('') + '</select></label>' +
     '<label class="filter-field">' + t('availabilitySort') + '<select id="availability-sort"><option value="catalog">' + t('catalogOrder') + '</option><option value="availability">' + t('availabilityOrder') + '</option></select></label>';
 }
 function availabilityToolbar() {
@@ -294,7 +300,7 @@ function availabilityDetails(frame) {
     '<details class="availability-info"><summary>' + t('availabilityData') + ' · ' + t(liveAvailability.stale ? 'stale' : 'availabilityCurrent') + '</summary><p class="small muted">' + t(liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') + ' ' + t('vaultExplanation') + '</p></details>' +
     (row ? row.parts.map(part => {
       const node = flatten(frame.recipe).find(node => node.id === part.id);
-      return '<details><summary>' + esc(catalogText(node, 'name')) + ' · ' + t('partAvailability_' + part.status) + '</summary>' +
+      return '<details><summary>' + esc(catalogText(node, 'name')) + ' · ' + t('partAvailability_' + (part.status === 'available' ? 'available' : 'vaulted')) + '</summary>' +
         (part.relics.length ? '<ul>' + part.relics.map(relic => '<li>' + relicIcon(relic.name) + '<strong>' + esc(relic.name) + '</strong> · ' + t(relic.channel === 'resurgence' ? 'resurgenceAya' : 'regularRelic') +
           (relic.locations.length ? '<ul>' + relic.locations.map(where => '<li>' + esc(where) + '</li>').join('') + '</ul>' : '') + '</li>').join('') + '</ul>' : '<p>' + t(part.status === 'vaulted' ? 'noNewRelics' : 'availabilityStale') + '</p>') + '</details>';
     }).join('') : '<p>' + t('availabilityStale') + '</p>') + '</section>';
@@ -303,6 +309,7 @@ async function refreshAvailability(force = false) {
   if (availabilityLoading) return;
   availabilityLoading = true;
   const update = () => {
+    if (tab === 'inventory' && inventoryTab === 'relics') { updateRelicSources(); return; }
     if (![...collectionTabs, 'settings'].includes(tab)) return;
     const panel = app.querySelector('.availability-tools');
     if (!panel) return;
@@ -381,7 +388,7 @@ function catalogView() {
     '<p class="collection-total"><strong>' + done + ' / ' + categoryFrames().length + '</strong> ' + t('collected') + '<small>' + started + ' · ' + t('inProgress') + '</small></p></div>' +
     '<div class="toolbar catalog-toolbar"><label class="search"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="' + t('search') + '" aria-label="' + t('search') + '" aria-describedby="search-hint" value="' + esc(search) + '"></label>' +
     '<div class="segments" aria-label="' + t('frameType') + '">' + [['all',t('all')],['standard',t('standardPlural')],['prime','Prime']].map(([value,label]) => '<button data-group="' + value + '">' + label + '</button>').join('') + '</div>' +
-    '<label class="filter-field">' + t('collectionStatus') + '<select id="status"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select></label>' + availabilityFilters() + '<button id="reset-filters">' + t('resetFilters') + '</button></div>' +
+    '<label class="filter-field">' + t('collectionStatus') + '<select id="status"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option><option value="mastered">' + L('Освоено','Mastered') + '</option><option value="unmastered">' + L('Не освоено','Not mastered') + '</option><option value="helminth">' + L('Передано Гельминту','Subsumed') + '</option><option value="no-helminth">' + L('Нужно Гельминту','Not subsumed') + '</option><option value="repeat">' + L('Повторная сборка','Repeat build') + '</option></select></label>' + availabilityFilters() + '<button id="reset-filters">' + t('resetFilters') + '</button></div>' +
     '<p id="search-hint" class="small muted">' + t('englishNames') + '</p>' + availabilityToolbar() + '<p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
     '<p class="catalog-version small muted">' + link('https://www.warframe.com/en/patch-notes', 'Warframe ' + gameVersion) + ' · ' + new Date(date + 'T12:00:00Z').toLocaleDateString(locale(), { timeZone: 'UTC' }) + '</p></section>';
   app.querySelector('#status').value = status;
@@ -398,14 +405,14 @@ function renderCards() {
   const shown = categoryFrames().filter(frame => {
     const { done, have } = collected(frame, state);
     const availability = liveAvailability.frames[frame.id];
-    return (availabilityFilter === 'all' || frame.prime && !frame.founder && (availabilityFilter === 'resurgence' ? availability?.resurgence : (availability?.status ?? 'unknown') === availabilityFilter)) &&
+    return (availabilityFilter === 'all' || frame.prime && !frame.founder && (availabilityFilter === 'resurgence' ? availability?.resurgence : archiveAvailability(availability) === availabilityFilter)) &&
       (group === 'all' || frame.prime === (group === 'prime')) &&
-      (status === 'all' || status === 'done' && done || status === 'missing' && !done || status === 'none' && !done && have === 0 || status === 'started' && !done && have > 0) &&
+      (status === 'mastered' && entry(state,frame).mastered || status === 'unmastered' && !entry(state,frame).mastered || status === 'helminth' && entry(state,frame).helminth || status === 'no-helminth' && helminthEligible(frame) && !entry(state,frame).helminth || status === 'repeat' && entry(state,frame).repeat || status === 'all' || status === 'done' && done || status === 'missing' && !done || status === 'none' && !done && have === 0 || status === 'started' && !done && have > 0) &&
       matchesFrame(frame, search);
   });
   shown.sort(frameOrder);
   if (availabilitySort === 'availability') {
-    const rank = frame => frame.prime && !frame.founder ? ({ available: 0, partial: 1, vaulted: 2, unknown: 3 }[liveAvailability.frames[frame.id]?.status ?? 'unknown']) : 4;
+    const rank = frame => frame.prime && !frame.founder ? ({ available: 0, vaulted: 1 }[archiveAvailability(liveAvailability.frames[frame.id])]) : 4;
     shown.sort((a, b) => rank(a) - rank(b) || frameOrder(a, b));
   }
   app.querySelector('#count').textContent = t('count', { shown: n(shown.length), total: n(categoryFrames().length) });
@@ -474,8 +481,60 @@ function updateInventoryStock(card, value, focusSelector) {
   if (!updated.hidden) updated.querySelector(focusSelector)?.focus({preventScroll:true});
   else app.querySelector('#deficit-filter').focus({preventScroll:true});
 }
+let inventoryTab='materials', relicSearch='', relicOnly=false, relicSourceFilter='all', relicPageIndex=0;
+let relicRows=[];
+const refinementLabels = () => [L('Нетронутая','Intact'), L('Необычная','Exceptional'), L('Безупречная','Flawless'), L('Сияющая','Radiant')];
+function inventoryTabs() { return '<div class="toolbar"><button data-inventory="materials" aria-pressed="'+(inventoryTab==='materials')+'">'+L('Ресурсы','Materials')+'</button><button data-inventory="relics" aria-pressed="'+(inventoryTab==='relics')+'">'+L('Реликвии','Relics')+'</button></div>'; }
+function relicSource(name) {
+ const live = liveAvailability.relics?.[name];
+ const locations = [...new Set([...(relicLocations[name] ?? []).map(row=>row.where), ...(live?.locations ?? [])])];
+ const active = !liveAvailability.stale && live?.status === 'available';
+ return { locations, active, hasSource: active || locations.length > 0,
+   label: active ? (live.channel === 'resurgence' ? 'Prime Resurgence · '+L('Варзия','Varzia') : L('В ротации','In rotation')) : live?.status === 'vaulted' && !liveAvailability.stale ? L('Вне ротации','Out of rotation') : L('Ротация не подтверждена','Rotation unconfirmed') };
+}
+function relicRewardsView(name) {
+ const levels = relicContents[name];
+ if (!levels) return '<p>'+L('Содержимое отсутствует в снимке данных.','Contents are missing from the data snapshot.')+'</p>';
+ const rewards = [...new Map(refinementLevels.flatMap(level=>(levels[level] ?? []).map(row=>[row.id,row]))).values()];
+ return '<p class="small muted">'+L('Шанс одной награды при открытии одной реликвии. Улучшение меняет вероятность.','Chance of one reward from one relic. Refinement changes the probability.')+'</p><div class="relic-rewards-scroll"><table class="relic-rewards"><thead><tr><th>'+L('Награда','Reward')+'</th>'+refinementLabels().map(label=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+rewards.map(row=>'<tr><th scope="row">'+esc(row.name)+'</th>'+refinementLevels.map(level=>{ const reward=levels[level]?.find(r=>r.id===row.id); return '<td>'+(reward?new Intl.NumberFormat(locale(), { maximumFractionDigits: 2 }).format(reward.chance)+'%':'—')+'</td>'; }).join('')+'</tr>').join('')+'</tbody></table></div><p class="small muted">WFCD / warframe-items · '+L('встроенный снимок содержимого; названия наград на английском','bundled reward snapshot')+'</p>';
+}
+function rebuildRelicRows() {
+ const needs=new Map();
+ for(const frame of scopedFrames(frames,state,'goals')) for(const part of missingParts(frame,state)) for(const relic of part.relics ?? []) {
+   const labels=needs.get(relic.name) ?? new Set();
+   labels.add(displayFrameName(frame)+' · '+catalogText(part,'name')); needs.set(relic.name,labels);
+ }
+ relicRows=relicLibrary(frames,relicLocations).map(name=>({name,...relicSource(name),goal:needs.has(name),targets:[...(needs.get(name) ?? [])]}));
+}
+function updateRelicSources() {
+ rebuildRelicRows(); filterRelicCards(false);
+}
+function relicCard(row) {
+ const {name}=row;
+ return '<article class="inventory-card" data-relic-card="'+esc(name)+'"><details class="relic-contents" data-relic-content="'+esc(name)+'"><summary>'+relicIcon(name)+'<strong>'+esc(name)+'</strong> · '+L('Награды и шансы','Rewards and chances')+'</summary><div data-relic-rewards></div></details><p class="small"><strong>'+esc(row.label)+'</strong> · '+(row.hasSource?L('Есть источник','Known source'):L('Нет известного источника','No known source'))+'</p>'+refinementLevels.map((level,i)=>'<label class="relic-stock-row">'+refinementLabels()[i]+numberInput('data-relic="'+esc(name)+'" data-level="'+level+'"',state.relics?.[name]?.[level] ?? 0,name+' '+level)+'<button data-use-relic="'+esc(name)+'" data-level="'+level+'" '+((state.relics?.[name]?.[level] ?? 0)>0?'':'disabled')+'>'+L('Открыта −1','Opened −1')+'</button></label>').join('')+'<p>'+row.targets.map(esc).join('; ')+'</p><details class="relic-locations"><summary>'+L('Места выпадения','Drop locations')+' · '+row.locations.length+'</summary>'+(row.locations.length?'<ul>'+row.locations.map(where=>'<li>'+esc(where)+'</li>').join('')+'</ul>':'<p class="muted small">'+(row.active?esc(row.label):L('Источник в снимке каталога неизвестен','Source unknown in catalog snapshot'))+'</p>')+'</details></article>';
+}
+function filterRelicCards(resetPage=true) {
+ if(resetPage) relicPageIndex=0;
+ const result=relicPage(relicRows,{search:relicSearch,onlyGoals:relicOnly,source:relicSourceFilter,page:relicPageIndex});
+ relicPageIndex=result.page;
+ // Only replace the bounded result grid. The input, caret and toolbar stay in place.
+ app.querySelector('#relic-grid').innerHTML=result.items.map(relicCard).join('');
+ app.querySelector('#relic-count').textContent=L('Найдено: ','Found: ')+result.total+' · '+L('Страница ','Page ')+(result.page+1)+' / '+result.pages;
+ app.querySelector('#relic-empty').hidden=result.total>0;
+ app.querySelector('#relic-prev').disabled=result.page===0;
+ app.querySelector('#relic-next').disabled=result.page+1===result.pages;
+}
+function relicInventoryView() {
+ rebuildRelicRows();
+ app.innerHTML=intro(t('resourcesSection'),L('Библиотека реликвий','Relic library'),L('Нажмите на название реликвии, чтобы посмотреть награды и шансы по улучшениям. Запас даёт попытки, но не гарантирует нужную часть.','Click a relic name to inspect rewards and refinement chances. Stock gives attempts, not a guaranteed part.'))+inventoryTabs()+
+ '<div class="toolbar"><input id="relic-search" type="search" aria-label="'+L('Поиск реликвий','Search relics')+'" value="'+esc(relicSearch)+'"><label>'+L('Источники','Sources')+' <select id="relic-source"><option value="all">'+L('Все реликвии','All relics')+'</option><option value="active">'+L('В ротации сейчас','In rotation now')+'</option><option value="source">'+L('Есть известный источник','Known source')+'</option><option value="no-source">'+L('Нет известного источника','No known source')+'</option></select></label><label><input id="relic-only" type="checkbox" '+(relicOnly?'checked':'')+'>'+L('Для моих целей','For my goals')+'</label>'+undoButton('undo-relic')+'</div>'+
+ '<p class="small muted">'+L('Ротация проверяется онлайн. Известные миссии взяты из снимка каталога и могут устареть; отсутствие источника не доказывает, что реликвия недоступна.','Rotation is checked online. Known missions come from a catalog snapshot and may be outdated; a missing source does not prove the relic is unavailable.')+'</p><div class="toolbar"><button id="relic-prev">← '+L('Назад','Previous')+'</button><p id="relic-count" class="small muted" aria-live="polite"></p><button id="relic-next">'+L('Далее','Next')+' →</button></div><p id="relic-empty" hidden>'+L('Реликвий по выбранным фильтрам нет.','No relics match these filters.')+'</p><div id="relic-grid" class="inventory-grid relic-grid"></div>';
+ app.querySelector('#relic-source').value=relicSourceFilter;
+ filterRelicCards(false);
+}
 function inventoryView() {
-  app.innerHTML = intro(t('resourcesSection'), t('inventory'), t('inventoryDescription')) +
+ if(inventoryTab==='relics') { relicInventoryView(); return; }
+  app.innerHTML = intro(t('resourcesSection'), t('inventory'), t('inventoryDescription')) + inventoryTabs() +
     '<div class="toolbar"><label>' + t('resourceScope') + ' <select id="resource-scope"><option value="goals">' + t('myGoals') + '</option><option value="all">' + t('entireCollection') + '</option></select></label><label class="search"><input type="search" id="material-search" placeholder="' + t('materialSearch') + '" aria-label="' + t('materialSearch') + '" value="' + esc(materialSearch) + '"></label><button id="deficit-filter" aria-pressed="' + onlyDeficit + '">' + t('onlyDeficit') + '</button><button id="reset-materials">' + t('resetFilters') + '</button></div>' +
     (resourceScope === 'goals' && !state.goals.length ? '<p class="notes">' + t('noGoals') + ' <a href="#catalog">' + t('catalog') + '</a></p>' : '') +
     '<p id="material-count" class="small muted" aria-live="polite"></p>' + (resourceScope === 'goals' && !state.goals.length ? '' : '<div class="inventory-grid">' + combined(resourceScope).filter(row => resourceScope === 'all' || row.count > 0).map(resourceCard).join('') + '</div>');
@@ -559,7 +618,7 @@ function renderPage() {
   }
   if (tab === 'home') renderHome();
   else if (tab === 'inventory') inventoryView();
-  else if (tab === 'goals') app.innerHTML = intro(t('personalArchive'), t('myGoals'), t('goalsPageHint')) + goalsView() + assistantView();
+  else if (tab === 'goals') app.innerHTML = intro(t('personalArchive'), t('myGoals'), t('goalsPageHint')) + goalsView() + intersectionsView() + assistantView();
   else if (tab === 'summary') summaryView();
   else if (tab === 'settings') settingsView();
   else catalogView();
@@ -576,7 +635,7 @@ function dropList(part, frame) {
   const relics = part.relics?.length ? '<h4>' + t('relics') + '</h4><p class="small muted">' + t('relicOdds') + '</p>' + part.relics.map(relic => {
     const places = relicLocations[relic.name];
     return '<details class="relic"><summary>' + relicIcon(relic.name) + esc(relic.name) + ' <small>' + n(relic.chance) +
-      '% · ' + (places ? t('relicInMissions') : t('relicNoMission')) + '</small></summary>' +
+      '% · ' + L('Ваш запас: ','Your stock: ') + relicTotal(state,relic.name) + ' · ' + (places ? t('relicInMissions') : t('relicNoMission')) + '</small></summary>' +
       (places ? '<ul>' + places.map(place => '<li>' + esc(place.where) + ' · ' + n(place.chance) + '%</li>').join('') + '</ul>' :
         '<p class="muted">' + t('relicAlternatives') + '</p>') +
       '</details>';
@@ -586,7 +645,7 @@ function dropList(part, frame) {
 function partView(part, frame, opened, root, inherited) {
   const partName = catalogText(part, 'name');
   const saved = entry(state, frame);
-  const value = inherited ? 2 : saved.parts[part.id] ?? 0;
+  const value = inherited ? 2 : workEntry(state,frame).parts[part.id] ?? 0;
   const marker = value === 2 ? t('partReady') : value === 1 ? t('partBlueprint') : t('partMissing');
   const options = root ? '<label><input class="check" type="checkbox" data-part="' + esc(part.id) + '"' +
     (value ? ' checked' : '') + (inherited ? ' disabled' : '') + '> ' + t('blueprintOwned') + '</label>' :
@@ -605,6 +664,11 @@ function partView(part, frame, opened, root, inherited) {
     (!root && part.parts.length ? '<h4>' + t('components') + '</h4>' + part.parts.map(node => partView(node, frame, opened, false, value === 2)).join('') : '') +
     '</div></details></section>';
 }
+function relicCoverage(frame) {
+ if (!frame.prime) return '';
+ const parts=missingParts(frame,state).filter(p=>p.relics?.length);
+ return parts.length?'<section class="notes"><h3>'+L('Реликвии для недостающих частей','Relics for missing parts')+'</h3><ul>'+parts.map(p=>{ const stock=p.relics.reduce((sum,r)=>sum+relicTotal(state,r.name),0); return '<li>'+esc(catalogText(p,'name'))+' · '+(stock?L('Есть попытки: ','Attempts available: ')+stock:L('Нужно добыть реликвии','Obtain relics first'))+'</li>'; }).join('')+'</ul><p>'+L('Запас общий для всех целей; нужная награда не гарантирована.','Stock is shared across goals; the desired reward is not guaranteed.')+'</p></section>':'';
+}
 function renderDetail(frame, keep = false) {
   const open = new Set(keep ? [...dialog.querySelectorAll('[data-section][open]')].map(node => node.dataset.section) : []);
   const y = keep ? dialog.scrollTop : 0;
@@ -616,15 +680,15 @@ function renderDetail(frame, keep = false) {
     '</div><button class="close" aria-label="' + t('close') + '" id="close">×</button></div><div class="detail-body">' +
     '<label class="owned"><input class="check" type="checkbox" id="owned"' + (saved.done ? ' checked' : '') +
     '> <strong>' + t('itemOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +
-    availabilityDetails(frame) + '<div class="toolbar">' + (frame.recipe ? '<button id="toggle-goal" aria-pressed="' + state.goals.includes(frame.id) + '">' + t(state.goals.includes(frame.id) ? 'goalRemove' : 'goalAdd') + '</button>' : '') + undoButton('undo-detail') + '</div>' +
+    ['mastered', ...(helminthEligible(frame) ? ['helminth'] : []), 'repeat'].map(field => '<label class="owned"><input type="checkbox" data-state-field="' + field + '"' + (saved[field] ? ' checked' : '') + '> ' + ({mastered:L('Освоено','Mastered'),helminth:L('Передано Гельминту','Subsumed by Helminth'),repeat:L('Собираю ещё один экземпляр','Building another copy')})[field] + '</label>').join('') + relicCoverage(frame) + availabilityDetails(frame) + '<div class="toolbar">' + (saved.repeat ? '<button id="finish-repeat">' + L('Повторная сборка готова','Complete repeat build') + '</button>' : '') + (frame.recipe ? '<button id="toggle-goal" aria-pressed="' + state.goals.includes(frame.id) + '">' + t(state.goals.includes(frame.id) ? 'goalRemove' : 'goalAdd') + '</button>' : '') + undoButton('undo-detail') + '</div>' +
     (frame.market ? '<div class="buy-line"><span class="gold">' + t('setLabel') + ' <strong data-price="' + esc(frame.market) + '">' + priceLabel(frame.market) + '</strong></span> ' +
       marketLink(frame.market, 'Warframe.market') + '</div>' +
       '<label class="small">' + t('actualPurchase') + ' ' + numberInput('id="paid" placeholder="—"', saved.paid ?? '', t('actualPurchase')) +
       '</label><p class="muted small">' + t('purchaseHint') + '</p>' : '') +
     (!frame.recipe ? '<p class="notes">' + t(frame.founder ? 'founderNotes' : 'noRecipeHint') + '</p>' :
-      '<h3>' + t('blueprintsAndComponents') + '</h3><p class="muted small">' + t('quickStatusHint') + '</p>' + (frame.name === 'Equinox' ? '<p class="notes">' + t('equinoxNotes') + '</p>' : '') +
-      partView(frame.recipe, frame, open, true, saved.done) +
-      frame.recipe.parts.map(part => partView(part, frame, open, false, saved.done)).join('') +
+      (frame.prime ? '<p class="notes">' + L('Реликвии: запас даёт попытки, но не гарантирует выпадение. Изменить запас можно в инвентаре.','Relics: stock gives attempts, not guaranteed drops. Edit stock in Inventory.') + '</p>' : '') + '<h3>' + t('blueprintsAndComponents') + '</h3><p class="muted small">' + t('quickStatusHint') + '</p>' + (frame.name === 'Equinox' ? '<p class="notes">' + t('equinoxNotes') + '</p>' : '') +
+      partView(frame.recipe, frame, open, true, saved.done && !saved.repeat) +
+      frame.recipe.parts.map(part => partView(part, frame, open, false, saved.done && !saved.repeat)).join('') +
       '<p class="muted small">' + t('stockNotes') + '</p>') +
     '</div>';
   dialog.scrollTop = y;
@@ -727,6 +791,19 @@ function changed(event) {
     else delete state.notes[frame.id];
     recordChange('note', frame); void save(); renderPage(); return;
   }
+  if(input.id==='relic-search') return;
+  if(input.id==='relic-only') { relicOnly=input.checked; filterRelicCards(); return; }
+  if(input.id==='relic-source') { relicSourceFilter=input.value; filterRelicCards(); return; }
+  if(input.hasAttribute('data-relic')) {
+    if(!input.checkValidity() || !Number.isSafeInteger(Number(input.value))) return;
+    captureProgress(); (state.relics[input.dataset.relic] ??= {})[input.dataset.level]=Number(input.value); input.closest('label').querySelector('button').disabled=Number(input.value)===0; void save(); return;
+  }
+  if(input.hasAttribute('data-state-field')) {
+    captureProgress(); const saved=state.frames[frameId] ??= {parts:{}};
+    saved[input.dataset.stateField]=input.checked;
+    if(input.dataset.stateField==='repeat' && input.checked) { saved.repeatParts={}; if(!state.goals.includes(frameId)) state.goals.push(frameId); }
+    void save(); renderDetail(byId.get(frameId),true); return;
+  }
   if (input.id === 'availability-filter') { availabilityFilter = input.value; renderCards(); return; }
   if (input.id === 'availability-sort') { availabilitySort = input.value; renderCards(); return; }
   if (input.id === 'resource-scope') { resourceScope = input.value; inventoryView(); return; }
@@ -756,7 +833,7 @@ function changed(event) {
       save();
       return;
     }
-    if (input.hasAttribute('data-part')) { saved.parts[input.dataset.part] = input.type === 'checkbox' ? Number(input.checked) : Number(input.value); recordChange('part', frame); }
+    if (input.hasAttribute('data-part')) { (saved.repeat ? (saved.repeatParts ??= {}) : saved.parts)[input.dataset.part] = input.type === 'checkbox' ? Number(input.checked) : Number(input.value); recordChange('part', frame); }
   }
   save();
   if (dialog.open && frame) {
@@ -770,6 +847,13 @@ function changed(event) {
 app.addEventListener('click', event => {
   const button = event.target.closest('button');
   if (!button) return;
+  if(button.hasAttribute('data-inventory')) { inventoryTab=button.dataset.inventory; inventoryView(); return; }
+  if(button.id==='undo-relic') { undoProgress(); return; }
+  if(button.id==='relic-prev' || button.id==='relic-next') { relicPageIndex+=button.id==='relic-next'?1:-1; filterRelicCards(false); return; }
+  if(button.hasAttribute('data-use-relic')) {
+    const levels=state.relics[button.dataset.useRelic], level=button.dataset.level;
+    if(levels?.[level]>0) { captureProgress(); levels[level]--; const row=button.closest('label'); row.querySelector('input').value=levels[level]; button.disabled=levels[level]===0; void save(); } return;
+  }
   if (button.hasAttribute('data-edit-stock')) {
     const card=button.closest('[data-resource]'); card.querySelector('.stock-editor').hidden=false; button.hidden=true;
     const input=card.querySelector('.stock-editor input'); input.focus(); input.select(); return;
@@ -806,7 +890,15 @@ app.addEventListener('click', event => {
     if (frame?.market) void refreshFrame(frame, button);
   }
 });
+app.addEventListener('toggle', event => {
+ const details=event.target;
+ if(details.open && details.hasAttribute('data-relic-content')) {
+   const content=details.querySelector('[data-relic-rewards]');
+   if(!content.hasChildNodes()) content.innerHTML=relicRewardsView(details.dataset.relicContent);
+ }
+}, true);
 app.addEventListener('input', event => {
+  if(event.target.id === 'relic-search') { relicSearch=event.target.value; filterRelicCards(); return; }
   if (event.target.id === 'material-search') { materialSearch = event.target.value; filterMaterials(); }
   if (event.target.id === 'search') { search = event.target.value; renderCards(); }
 });
@@ -826,6 +918,7 @@ app.addEventListener('keydown', event => {
 app.addEventListener('change', changed);
 dialog.addEventListener('change', changed);
 dialog.addEventListener('click', event => {
+  if(event.target.id === 'finish-repeat') { captureProgress(); state.frames[frameId].repeat=false; state.frames[frameId].done=true; void save(); renderDetail(byId.get(frameId),true); }
   if (event.target.id === 'undo-detail') undoProgress();
   if (event.target.id === 'toggle-goal') {
     captureProgress();

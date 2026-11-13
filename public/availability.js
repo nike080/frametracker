@@ -53,7 +53,11 @@ export function buildAvailability(frames, snapshot, now = Date.now()) {
     const status = parts.some(part => part.status === 'unknown') ? 'unknown' : available === parts.length ? 'available' : available > 0 ? 'partial' : 'vaulted';
     result[frame.id] = { status, available, total: parts.length, resurgence: parts.some(part => part.relics.some(relic => relic.channel === 'resurgence')), parts };
   }
-  return { frames: result, sources: { relics: snapshot.relics?.date ?? null, traders: snapshot.traders?.date ?? null },
+  const relicStatus = Object.fromEntries(relics.map(relic => [relic.name, {
+    status: !ordinaryKnown || !resurgenceKnown || unknownOffers ? 'unknown' : relic.vaulted === false || resurgence.has(relic.id) ? 'available' : relic.vaulted === true ? 'vaulted' : 'unknown',
+    channel: resurgence.has(relic.id) ? 'resurgence' : 'regular', locations: relic.locations,
+  }]));
+  return { frames: result, relics: relicStatus, sources: { relics: snapshot.relics?.date ?? null, traders: snapshot.traders?.date ?? null },
     stale: !ordinaryKnown || !resurgenceKnown || unknownOffers, expiry: current.length ? new Date(Math.min(...current.map(t => t.end))).toISOString() : null };
 }
 

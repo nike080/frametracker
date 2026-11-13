@@ -145,3 +145,9 @@ Material icons are bundled for offline use. After refreshing the catalog, run `n
 - [Warframe.market](https://warframe.market/) for market price estimates.
 
 FrameTracker is an unofficial fan project and is not affiliated with or endorsed by Digital Extremes or Warframe.market. Warframe and its associated assets belong to their respective owners.
+
+## Farming and relic inventory (1.11.0)
+
+My goals shows shared farming sources with exact rotation conditions. Ownership, mastery and Helminth are independent; repeat builds keep separate component progress. Home includes a Helminth tracker without resource requirements.
+
+Inventory → Relics tracks 799 bundled relics at four refinement levels, with searchable 24-card pages, live rotation/source filters, expandable reward chances and drop-location lists. Opening a relic subtracts one with undo. Stock gives attempts, not guaranteed drops; it is shared across goals. Archive filters group unknown availability under Vaulted by the accepted presentation rule.
