@@ -75,6 +75,7 @@ async function main() {
     '/': ['index.html', 'text/html'], '/style.css': ['style.css', 'text/css'],
     '/app.js': ['app.js', 'text/javascript'], '/model.js': ['model.js', 'text/javascript'],
     '/i18n.js': ['i18n.js', 'text/javascript'],
+    '/overframe.js': ['overframe.js', 'text/javascript'],
     '/themes.js': ['themes.js', 'text/javascript'], '/orokin.css': ['orokin.css', 'text/css'],
     '/availability.js': ['availability.js', 'text/javascript'],
     '/catalog.json': ['catalog.json', 'application/json'], '/mark.svg': ['mark.svg', 'image/svg+xml'],
