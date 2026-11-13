@@ -5,7 +5,7 @@ import { flatten } from '../public/model.js';
 export function checkCatalog(catalog) {
   const errors = [], warnings = [];
   const ids = new Set();
-  for (const frame of catalog.frames) {
+  for (const frame of [...catalog.frames, ...(catalog.equipment ?? [])]) {
     if (ids.has(frame.id)) errors.push('Duplicate frame: ' + frame.id);
     ids.add(frame.id);
     for (const node of flatten(frame.recipe)) {

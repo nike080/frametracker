@@ -20,6 +20,7 @@ const noBrowser = process.argv.includes('--no-browser');
 
 async function main() {
   const catalog = JSON.parse(await asset('catalog.json'));
+  catalog.frames = [...catalog.frames, ...(catalog.equipment ?? [])];
   const { availabilityService } = await import('data:text/javascript;base64,' + (await asset('availability.js')).toString('base64'));
   const { worldStateService } = await import('data:text/javascript;base64,' + (await asset('world-state.js')).toString('base64'));
   const worldState = worldStateService();

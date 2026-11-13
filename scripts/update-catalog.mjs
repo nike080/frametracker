@@ -25,6 +25,7 @@ async function download(url, filename) {
 }
 
 const inputs = {
+  ...Object.fromEntries(['Primary','Secondary','Melee','Archwing','Arch-Gun','Arch-Melee','Pets','Sentinels'].map(name => [name + '-source', catalogBase + name + '.json'])),
   'warframes-source': catalogBase + 'Warframes.json',
   'Components-source': catalogBase + 'Components.json',
   'Resources-source': catalogBase + 'Resources.json',
@@ -50,3 +51,6 @@ const build = fileURLToPath(new URL('./build-catalog.mjs', import.meta.url));
 const { stdout, stderr } = await exec(process.execPath, [build, version, working.href]);
 process.stdout.write(stdout);
 process.stderr.write(stderr);
+
+const expanded = await exec(process.execPath, [fileURLToPath(new URL('./expand-catalog.mjs', import.meta.url)), fileURLToPath(working)]);
+process.stdout.write(expanded.stdout);

@@ -9,6 +9,8 @@ if (process.platform !== 'win32' || process.arch !== 'x64' || process.versions.n
 }
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dist = resolve(root, 'dist');
+const releaseName = process.argv[2] ?? 'FrameTracker.exe';
+if (!/^FrameTracker(?:-[A-Za-z0-9-]+)?\.exe$/.test(releaseName)) throw new Error('Invalid release filename');
 await mkdir(dist, { recursive: true });
 const working = await mkdtemp(join(dist, 'build-'));
 try {
@@ -27,7 +29,7 @@ try {
     resolve(root, 'node_modules', 'postject', 'dist', 'cli.js'), exe, 'NODE_SEA_BLOB', blob,
     '--sentinel-fuse', 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2',
   ], { stdio: 'inherit' });
-  const release = join(dist, 'FrameTracker.exe');
+  const release = join(dist, releaseName);
   await rename(exe, release);
   console.log(release);
 } finally {

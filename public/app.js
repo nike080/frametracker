@@ -80,7 +80,7 @@ languageSelect.addEventListener('change', () => {
 });
 applyLanguage();
 
-const { frames, materials, relicLocations, date, gameVersion } = await fetch('/catalog.json').then(response => {
+const { frames: warframes, equipment = [], materials, relicLocations, date, gameVersion } = await fetch('/catalog.json').then(response => {
   if (!response.ok) throw new Error('Catalog unavailable');
   return response.json();
 }).catch(error => {
@@ -88,6 +88,7 @@ const { frames, materials, relicLocations, date, gameVersion } = await fetch('/c
   app.textContent = t(pageMessage);
   throw error;
 });
+const frames = [...warframes, ...equipment];
 const materialIcons = await fetch('/material-icons.json').then(response => {
   if (!response.ok) throw new Error('Material icons unavailable');
   return response.json();
@@ -102,6 +103,8 @@ const byId = new Map(frames.map(frame => [frame.id, frame]));
 const tradable = frames.filter(frame => frame.market);
 let state = empty();
 let tab = 'home';
+const collectionTabs = ['catalog','primary','secondary','melee','archwing','archgun','archmelee','necramech','pets'];
+const categoryFrames = () => frames.filter(frame => (frame.category ?? 'warframes') === (tab === 'catalog' ? 'warframes' : tab));
 let worldSnapshot;
 let worldLoading = false;
 let group = 'all';
@@ -300,14 +303,14 @@ async function refreshAvailability(force = false) {
   if (availabilityLoading) return;
   availabilityLoading = true;
   const update = () => {
-    if (!['catalog', 'settings'].includes(tab)) return;
+    if (![...collectionTabs, 'settings'].includes(tab)) return;
     const panel = app.querySelector('.availability-tools');
     if (!panel) return;
     const expanded = panel.querySelector('details').open;
     panel.outerHTML = availabilityToolbar();
     app.querySelector('.availability-info').open = expanded;
     if (tab === 'home') renderHome();
-    if (tab === 'catalog') renderCards();
+    if (collectionTabs.includes(tab)) renderCards();
   };
   update();
   try {
@@ -372,10 +375,10 @@ function quickUpdate(button) {
   void save(); renderPage();
 }
 function catalogView() {
-  const done = frames.filter(frame => entry(state, frame).done).length;
-  const started = frames.filter(frame => { const p = collected(frame, state); return !p.done && p.have > 0; }).length;
-  app.innerHTML = '<section aria-label="' + t('collection') + '"><div class="catalog-heading"><div><span class="eyebrow">' + t('personalArchive') + '</span><h1>' + t('collection') + '</h1></div>' +
-    '<p class="collection-total"><strong>' + done + ' / ' + frames.length + '</strong> ' + t('collected') + '<small>' + started + ' · ' + t('inProgress') + '</small></p></div>' +
+  const done = categoryFrames().filter(frame => entry(state, frame).done).length;
+  const started = categoryFrames().filter(frame => { const p = collected(frame, state); return !p.done && p.have > 0; }).length;
+  app.innerHTML = '<section aria-label="' + t('collection') + '"><div class="catalog-heading"><div><span class="eyebrow">' + t('personalArchive') + '</span><h1>' + t(tab === 'catalog' ? 'warframes' : tab) + '</h1></div>' +
+    '<p class="collection-total"><strong>' + done + ' / ' + categoryFrames().length + '</strong> ' + t('collected') + '<small>' + started + ' · ' + t('inProgress') + '</small></p></div>' +
     '<div class="toolbar catalog-toolbar"><label class="search"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="' + t('search') + '" aria-label="' + t('search') + '" aria-describedby="search-hint" value="' + esc(search) + '"></label>' +
     '<div class="segments" aria-label="' + t('frameType') + '">' + [['all',t('all')],['standard',t('standardPlural')],['prime','Prime']].map(([value,label]) => '<button data-group="' + value + '">' + label + '</button>').join('') + '</div>' +
     '<label class="filter-field">' + t('collectionStatus') + '<select id="status"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select></label>' + availabilityFilters() + '<button id="reset-filters">' + t('resetFilters') + '</button></div>' +
@@ -392,7 +395,7 @@ function renderCards() {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', active);
   }
-  const shown = frames.filter(frame => {
+  const shown = categoryFrames().filter(frame => {
     const { done, have } = collected(frame, state);
     const availability = liveAvailability.frames[frame.id];
     return (availabilityFilter === 'all' || frame.prime && !frame.founder && (availabilityFilter === 'resurgence' ? availability?.resurgence : (availability?.status ?? 'unknown') === availabilityFilter)) &&
@@ -405,11 +408,11 @@ function renderCards() {
     const rank = frame => frame.prime && !frame.founder ? ({ available: 0, partial: 1, vaulted: 2, unknown: 3 }[liveAvailability.frames[frame.id]?.status ?? 'unknown']) : 4;
     shown.sort((a, b) => rank(a) - rank(b) || frameOrder(a, b));
   }
-  app.querySelector('#count').textContent = t('count', { shown: n(shown.length), total: n(frames.length) });
+  app.querySelector('#count').textContent = t('count', { shown: n(shown.length), total: n(categoryFrames().length) });
   app.querySelector('#cards').innerHTML = shown.length ? shown.map(frame => {
     const { done, have, total } = collected(frame, state);
     const percent = done ? 100 : total ? Math.round(have / total * 100) : 0;
-    const info = total ? stage(frame) + ' · ' + have + ' / ' + total : t('founderExclusive');
+    const info = total ? stage(frame) + ' · ' + have + ' / ' + total : t(frame.founder ? 'founderExclusive' : 'noRecipe');
     return '<button class="card" data-frame="' + esc(frame.id) + '">' + portrait(frame) +
       '<span class="card-name"><span>' + esc(displayFrameName(frame)) + '</span><span aria-hidden="true">↗</span></span>' +
       availabilityBadge(frame) + '<span class="card-progress"><span>' + info + '</span><span class="line"><i style="width:' + percent + '%"></i></span></span></button>';
@@ -612,13 +615,13 @@ function renderDetail(frame, keep = false) {
     '</span><h2 id="frame-title">' + esc(displayFrameName(frame)) + '</h2>' + link(frame.wiki, 'Warframe Wiki') + (overframeUrl(frame) ? ' · ' + link(overframeUrl(frame), t('popularBuilds')) : '') +
     '</div><button class="close" aria-label="' + t('close') + '" id="close">×</button></div><div class="detail-body">' +
     '<label class="owned"><input class="check" type="checkbox" id="owned"' + (saved.done ? ' checked' : '') +
-    '> <strong>' + t('frameOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +
+    '> <strong>' + t('itemOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +
     availabilityDetails(frame) + '<div class="toolbar">' + (frame.recipe ? '<button id="toggle-goal" aria-pressed="' + state.goals.includes(frame.id) + '">' + t(state.goals.includes(frame.id) ? 'goalRemove' : 'goalAdd') + '</button>' : '') + undoButton('undo-detail') + '</div>' +
     (frame.market ? '<div class="buy-line"><span class="gold">' + t('setLabel') + ' <strong data-price="' + esc(frame.market) + '">' + priceLabel(frame.market) + '</strong></span> ' +
       marketLink(frame.market, 'Warframe.market') + '</div>' +
       '<label class="small">' + t('actualPurchase') + ' ' + numberInput('id="paid" placeholder="—"', saved.paid ?? '', t('actualPurchase')) +
       '</label><p class="muted small">' + t('purchaseHint') + '</p>' : '') +
-    (frame.founder ? '<p class="notes">' + t('founderNotes') + '</p>' :
+    (!frame.recipe ? '<p class="notes">' + t(frame.founder ? 'founderNotes' : 'noRecipeHint') + '</p>' :
       '<h3>' + t('blueprintsAndComponents') + '</h3><p class="muted small">' + t('quickStatusHint') + '</p>' + (frame.name === 'Equinox' ? '<p class="notes">' + t('equinoxNotes') + '</p>' : '') +
       partView(frame.recipe, frame, open, true, saved.done) +
       frame.recipe.parts.map(part => partView(part, frame, open, false, saved.done)).join('') +
@@ -703,7 +706,7 @@ async function refreshMarket() {
 }
 function route() {
   const value = location.hash.slice(1);
-  tab = ['home', 'catalog', 'inventory', 'summary', 'goals', 'settings'].includes(value) ? value : 'home';
+  tab = ['home', ...collectionTabs, 'inventory', 'summary', 'goals', 'settings'].includes(value) ? value : 'home';
   if (tab === 'home') void refreshWorld();
   renderPage();
 }

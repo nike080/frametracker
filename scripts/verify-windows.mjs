@@ -12,7 +12,9 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const cache = join(root, '.cache');
 await mkdir(cache, { recursive: true });
 const profile = await mkdtemp(join(cache, 'portable-test-'));
-const original = join(root, 'dist', 'FrameTracker.exe');
+const releaseName = process.argv[2] ?? 'FrameTracker.exe';
+if (!/^FrameTracker(?:-[A-Za-z0-9-]+)?\.exe$/.test(releaseName)) throw new Error('Invalid release filename');
+const original = join(root, 'dist', releaseName);
 const replacement = join(profile, 'FrameTracker-replacement.exe');
 await copyFile(original, replacement);
 const probe = createServer();
@@ -57,6 +59,9 @@ try {
   const first = launch(original);
   const url = await ready(first, port);
   const catalog = await (await fetch(url + '/catalog.json')).json();
+  assert.equal(catalog.equipment.filter(item => item.category === 'necramech').length, 2);
+  assert.ok(catalog.equipment.some(item => item.category === 'archgun'));
+  assert.equal(catalog.equipment.filter(item => item.category === 'pets').length, 39);
   const frame = catalog.frames.find(frame => frame.name === 'Equinox Prime');
   assert.equal(await (await fetch(url)).status, 200);
   assert.match(await (await fetch(url + '/i18n.js')).text(), /export function setLanguage/);
@@ -98,7 +103,7 @@ try {
   await stop(dev);
   const fallbackDuplicate = launch(original);
   assert.equal((await once(fallbackDuplicate, 'exit'))[0], 0);
-  console.log('Portable Windows smoke test passed: 1.9.0 FT-23 home dashboard and localized embedded assets, catalog and faction UI, save, conflict, repeat launch, fallback port, and moved EXE.');
+  console.log('Portable Windows smoke test passed: 1.10.0 FT-25 expanded collections and home progress and localized embedded assets, catalog and faction UI, save, conflict, repeat launch, fallback port, and moved EXE.');
 } finally {
   await Promise.all([...children].map(stop));
   const storage = join(profile, 'FrameTracker');
