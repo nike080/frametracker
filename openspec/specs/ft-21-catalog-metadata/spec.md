@@ -1,5 +1,8 @@
 # ft-21-catalog-metadata
 
+## Purpose
+Keep catalog provenance and freshness details available while reducing their visual weight in the main collection interface.
+
 ## Requirements
 
 ### Requirement: FT-21: компактные сведения об источниках

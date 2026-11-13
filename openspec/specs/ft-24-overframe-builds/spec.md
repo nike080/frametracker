@@ -1,5 +1,8 @@
 # ft-24-overframe-builds
 
+## Purpose
+Help players reach popular community builds through shared Overframe pages for standard and Prime frame variants.
+
 ## Requirements
 
 ### Requirement: FT-24: популярные билды Overframe

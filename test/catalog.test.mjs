@@ -31,7 +31,7 @@ test('standard frames have trackable slots, except for the known quest and neste
   }
   assert.equal(frame('Excalibur Umbra').recipe.parts.length, 0);
   const chroma = frame('Chroma');
-  assert.ok(chroma.recipe.materials.some(row => catalog.materials[row.id].name === 'Volt Neuroptics'));
+  assert.ok(chroma.recipe.materials.some(row => catalog.materials[row.id].en === 'Volt Neuroptics'));
 });
 
 test('catalog IDs and Prime listings are complete, excluding the Founders exclusive', () => {

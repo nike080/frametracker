@@ -43,7 +43,7 @@ async function main() {
       nextRequest = Date.now() + 550;
       try {
         const response = await fetch('https://api.warframe.market/v2/orders/item/' + slug + '/top', {
-          headers: { 'User-Agent': 'FrameTracker/1.7.0 personal Warframe collection tracker', Platform: 'pc', Crossplay: 'true' },
+          headers: { 'User-Agent': 'FrameTracker/1.8.0 personal Warframe collection tracker', Platform: 'pc', Crossplay: 'true' },
           signal: AbortSignal.timeout(8500),
         });
         if (response.status === 429 || response.status === 403) {

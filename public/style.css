@@ -57,3 +57,17 @@ dialog{height:91dvh;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:
 .material-icon-currency img{background:#26313d}
 
 .relic-icon{display:inline-flex;vertical-align:middle;margin-right:8px;flex-shrink:0}
+
+/* Inventory resource cards */
+.inventory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:16px}
+.inventory-card{aspect-ratio:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:18px;border:1px solid var(--edge);border-radius:9px;background:var(--panel)}
+.inventory-card[hidden],.inventory-card [hidden]{display:none!important}
+.resource-art{display:grid;place-items:center;flex:1;min-height:64px;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--mint) 13%,transparent),transparent 70%)}
+.resource-art img{width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 5px 9px #0006)}
+.inventory-card h2{font:700 1.1rem var(--display);margin:0;overflow-wrap:anywhere}
+.inventory-card h2 a{color:var(--ink);text-decoration:none}.inventory-card h2 a:hover{text-decoration:underline}
+.resource-stats{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px}.resource-stats>div{display:grid;gap:5px;align-content:start}.resource-stats span{color:var(--muted);font-size:.75rem}.resource-stats strong,.resource-stock{font-size:1rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.resource-stock{min-height:0;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:4px;justify-self:start}
+.resource-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.resource-steps button{padding:6px 2px;font-size:.85rem}
+.resource-custom,.stock-editor{display:flex;gap:5px}.resource-custom input,.stock-editor input{flex:1;width:0;min-width:0}.resource-custom button,.stock-editor button{padding:6px 8px;font-size:.78rem}.stock-editor{flex-wrap:wrap}.stock-editor input{min-width:80px}
+@media(max-width:730px){.inventory-grid{grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}.inventory-card{padding:14px}}
+@media(max-width:360px){.inventory-grid{grid-template-columns:minmax(0,1fr)}}

@@ -79,6 +79,8 @@ Source details are based on the bundled catalog snapshot dated **2026-11-10**. K
 
 Open a Warframe and select **Collect next** to add it to **My goals** in the catalog. Reorder or remove goals there; completed goals stay visible until removed. Ordering does not reserve resources.
 
+Inventory uses square resource cards with images, stock, requirements and shortfall. Use ±1, ±10, ±100 and ±1000, or enter a custom amount and select Add or Remove. Click the underlined stock to edit it; Save/Enter applies and Cancel/Escape discards. Saving an empty stock marks it unknown again. Every resource has an official Russian name, while English-name search remains available.
+
 Inventory opens in **My goals** mode, showing combined requirements for selected frames and subtracting shared stock once. Switch to **Entire collection** for the original overview. Existing saves start with no goals; goals are included in new exports and imports.
 
 **Undo change** restores the state before the latest progress change, including a goal edit or import. One undo is available during the current session; reloading clears undo history. Resource stock remains manual: marking a component crafted does not deduct materials automatically.
