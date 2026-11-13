@@ -81,6 +81,7 @@ async function main() {
     '/material-icons.json': ['material-icons.json', 'application/json'],
     '/frame-names.js': ['frame-names.js', 'text/javascript'],
     '/frame-localization.js': ['frame-localization.js', 'text/javascript'],
+    '/outside-dismiss.js': ['outside-dismiss.js', 'text/javascript'],
   };
   function json(res, data, status = 200) {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
