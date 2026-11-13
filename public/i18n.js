@@ -1,4 +1,9 @@
 const messages = {
+  availabilityData: ['О данных реликвий', 'About relic data'],
+  availabilityCurrent: ['Актуальны', 'Up to date'],
+  goalsPageHint: ['Порядок целей и следующие шаги сборки в одном месте.', 'Goal priorities and next collection steps in one place.'],
+  recipeDetails: ['Рецепт и источники', 'Recipe and sources'],
+  quickStatusHint: ['Отмечай готовые компоненты прямо в строке. Рецепт открывать не нужно. Материалы не списываются; остатки обнови вручную.', 'Record crafted components directly in each row. No need to open the recipe. Materials are not consumed; update stock manually.'],
   primeAvailability: ['Доступность Prime-реликвий', 'Prime relic availability'],
   availabilityFilter: ['Показать', 'Show'],
   availabilitySort: ['Порядок', 'Order'],
@@ -23,7 +28,7 @@ const messages = {
   noNewRelics: ['Новые реликвии не найдены в текущей ротации. Проверь свои старые реликвии или обмен с игроками.', 'No new relics found in the current rotation. Check existing relics or player trading.'],
   rotationEnds: ['Ротация Варзии до', 'Varzia rotation until'],
   continueBuild: ['Продолжить сборку', 'Continue collecting'],
-  startOneGoal: ['Начни с одной цели: открой фрейма ниже и выбери «Собирать сейчас». Отмечай только его компоненты и нужные запасы — всю коллекцию заполнять не нужно.', 'Start with one goal: open a frame below and select Collect next. Record only its components and relevant stock; no full inventory setup is needed.'],
+  startOneGoal: ['Начни с одной цели: открой фрейма в каталоге и выбери «Собирать сейчас». Отмечай только его компоненты и нужные запасы — всю коллекцию заполнять не нужно.', 'Start with one goal: open a frame in the catalog and select Collect next. Record only its components and relevant stock; no full inventory setup is needed.'],
   unknownStock: ['Не проверено', 'Unknown'],
   checkStock: ['Уточни запас', 'Check stock'],
   action_acquire: ['Получи чертёж', 'Obtain blueprint'],

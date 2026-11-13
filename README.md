@@ -29,6 +29,10 @@ Open [http://127.0.0.1:4187/](http://127.0.0.1:4187/) in your browser. Keep the 
 
 ## What you can track
 
+The catalog combines search, frame type, collection status, Prime relic availability and sorting in one filter panel. Relic data details and refresh are available under **About relic data**. Use the **My goals** tab to reorder collection goals, continue collecting and record results.
+
+In a frame's detail panel, component status controls are always visible. Recipes and sources start collapsed and can be expanded separately inside a fixed-height panel. Marking an existing component as crafted does not deduct materials; update remaining stock manually.
+
 - Your collection of standard, Prime, and Umbra Warframes.
 - Blueprints, components, crafting requirements, and manually entered material stock.
 - Farming locations and Prime relic information from the bundled catalog.

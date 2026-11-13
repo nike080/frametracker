@@ -222,17 +222,19 @@ function availabilityBadge(frame) {
     (row && status !== 'unknown' ? ' · ' + row.available + '/' + row.total : '') +
     (row?.resurgence ? ' · ' + t('resurgence') : '') + '</span>';
 }
+function availabilityFilters() {
+  return '<label class="filter-field">' + t('primeAvailability') + '<select id="availability-filter">' +
+    ['all', 'available', 'partial', 'resurgence', 'vaulted', 'unknown'].map(value => '<option value="' + value + '">' + t(value === 'all' ? 'all' : value === 'resurgence' ? 'resurgence' : 'availability_' + value) + '</option>').join('') + '</select></label>' +
+    '<label class="filter-field">' + t('availabilitySort') + '<select id="availability-sort"><option value="catalog">' + t('catalogOrder') + '</option><option value="availability">' + t('availabilityOrder') + '</option></select></label>';
+}
 function availabilityToolbar() {
   const dates = Object.values(liveAvailability.sources).filter(Boolean).map(value => new Date(value).toLocaleString(locale()));
-  return '<section class="availability-panel availability-tools" aria-label="' + t('primeAvailability') + '"><h2>' + t('primeAvailability') + '</h2>' +
-    '<div class="toolbar"><label>' + t('availabilityFilter') + ' <select id="availability-filter">' +
-    ['all', 'available', 'partial', 'resurgence', 'vaulted', 'unknown'].map(value => '<option value="' + value + '">' + t(value === 'all' ? 'all' : value === 'resurgence' ? 'resurgence' : 'availability_' + value) + '</option>').join('') + '</select></label>' +
-    '<label>' + t('availabilitySort') + ' <select id="availability-sort"><option value="catalog">' + t('catalogOrder') + '</option><option value="availability">' + t('availabilityOrder') + '</option></select></label>' +
-    '<button id="refresh-availability"' + (availabilityLoading ? ' disabled' : '') + '>' + t(availabilityLoading ? 'availabilityLoading' : 'availabilityRefresh') + '</button></div>' +
+  return '<div class="availability-tools"><details class="availability-info"><summary>' + t('availabilityData') + ' · ' + t(availabilityLoading ? 'availabilityLoading' : liveAvailability.stale ? 'stale' : 'availabilityCurrent') + '</summary>' +
+    '<button id="refresh-availability"' + (availabilityLoading ? ' disabled' : '') + '>' + t(availabilityLoading ? 'availabilityLoading' : 'availabilityRefresh') + '</button>' +
     '<p class="small muted" role="status">' + t(availabilityLoading ? 'availabilityLoading' : liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') +
     (dates.length ? ' · ' + t('availabilityFetched') + ': ' + esc(dates.join(' / ')) : '') +
     (liveAvailability.expiry ? ' · ' + t('rotationEnds') + ': ' + esc(new Date(liveAvailability.expiry).toLocaleString(locale())) : '') + '</p>' +
-    '<p class="small muted">' + t('vaultExplanation') + ' ' + link('https://github.com/WFCD/warframe-items', 'WFCD') + ' · ' + link('https://www.warframe.com/en/prime-resurgence', 'Prime Resurgence') + '</p></section>';
+    '<p class="small muted">' + t('vaultExplanation') + ' ' + link('https://github.com/WFCD/warframe-items', 'WFCD') + ' · ' + link('https://www.warframe.com/en/prime-resurgence', 'Prime Resurgence') + '</p></details></div>';
 }
 function availabilityDetails(frame) {
   if (!frame.prime || frame.founder) return '';
@@ -253,9 +255,9 @@ async function refreshAvailability(force = false) {
     if (tab !== 'catalog') return;
     const panel = app.querySelector('.availability-tools');
     if (!panel) return;
+    const expanded = panel.querySelector('details').open;
     panel.outerHTML = availabilityToolbar();
-    app.querySelector('#availability-filter').value = availabilityFilter;
-    app.querySelector('#availability-sort').value = availabilitySort;
+    app.querySelector('.availability-info').open = expanded;
     renderCards();
   };
   update();
@@ -285,7 +287,7 @@ function sourceView(frame, action) {
 }
 function assistantView() {
   const goals = scopedFrames(frames, state, 'goals');
-  if (!goals.length) return '<section class="goals-panel assistant"><h2>' + t('continueBuild') + '</h2><p>' + t('startOneGoal') + '</p></section>';
+  if (!goals.length) return '<section class="goals-panel assistant"><h2>' + t('continueBuild') + '</h2><p>' + t('startOneGoal') + '</p><a href="#catalog">' + t('catalog') + '</a></section>';
   const last = state.lastChange;
   return '<section class="goals-panel assistant" aria-labelledby="assistant-title"><h2 id="assistant-title">' + t('continueBuild') + '</h2>' +
     (last ? '<p class="small muted">' + t('lastChange') + ': ' + esc(byId.get(last.frameId)?.name) + ' · ' + t('change_' + last.kind) + ' · ' + esc(new Date(last.at).toLocaleString(locale())) + '</p>' : '') +
@@ -327,8 +329,8 @@ function catalogView() {
     '<p class="collection-total"><strong>' + done + ' / ' + frames.length + '</strong> ' + t('collected') + '<small>' + started + ' · ' + t('inProgress') + '</small></p></div>' +
     '<div class="toolbar catalog-toolbar"><label class="search"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="' + t('search') + '" aria-label="' + t('search') + '" aria-describedby="search-hint" value="' + esc(search) + '"></label>' +
     '<div class="segments" aria-label="' + t('frameType') + '">' + [['all',t('all')],['standard',t('standardPlural')],['prime','Prime']].map(([value,label]) => '<button data-group="' + value + '">' + label + '</button>').join('') + '</div>' +
-    '<select id="status" aria-label="' + t('collectionStatus') + '"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select><button id="reset-filters">' + t('resetFilters') + '</button></div>' +
-    availabilityToolbar() + assistantView() + '<p id="search-hint" class="small muted">' + t('englishNames') + '</p>' + goalsView() + '<p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
+    '<label class="filter-field">' + t('collectionStatus') + '<select id="status"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select></label>' + availabilityFilters() + '<button id="reset-filters">' + t('resetFilters') + '</button></div>' +
+    '<p id="search-hint" class="small muted">' + t('englishNames') + '</p>' + availabilityToolbar() + '<p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
     '<p class="catalog-version small muted">' + link('https://www.warframe.com/en/patch-notes', 'Warframe ' + gameVersion) + ' · ' + new Date(date + 'T12:00:00Z').toLocaleDateString(locale(), { timeZone: 'UTC' }) + '</p></section>';
   app.querySelector('#status').value = status;
   app.querySelector('#availability-filter').value = availabilityFilter;
@@ -467,6 +469,7 @@ function renderPage() {
     else anchor.removeAttribute('aria-current');
   }
   if (tab === 'inventory') inventoryView();
+  else if (tab === 'goals') app.innerHTML = intro(t('personalArchive'), t('myGoals'), t('goalsPageHint')) + goalsView() + assistantView();
   else if (tab === 'summary') summaryView();
   else catalogView();
 }
@@ -496,22 +499,23 @@ function partView(part, frame, opened, root, inherited) {
   const marker = value === 2 ? t('partReady') : value === 1 ? t('partBlueprint') : t('partMissing');
   const options = root ? '<label><input class="check" type="checkbox" data-part="' + esc(part.id) + '"' +
     (value ? ' checked' : '') + (inherited ? ' disabled' : '') + '> ' + t('blueprintOwned') + '</label>' :
-    '<select data-part="' + esc(part.id) + '" aria-label="' + esc(t('partStatus') + ' ' + partName) + '"' + (inherited ? ' disabled' : '') + '>' +
-      [t('partMissing'),t('blueprintOwned'),t('crafted')].map((label, index) => '<option value="' + index + '"' +
-        (index === value ? ' selected' : '') + '>' + label + '</option>').join('') + '</select>';
-  return '<details class="part" data-section="' + esc(part.id) + '"' + (opened.has(part.id) ? ' open' : '') +
-    '><summary><strong>' + esc(partName) + (part.count > 1 ? ' ×' + part.count : '') + '</strong>' +
+    '<div class="part-choices" role="radiogroup" aria-label="' + esc(t('partStatus') + ' ' + partName) + '">' +
+      [t('partMissing'),t('partBlueprint'),t('crafted')].map((label, index) => '<label><input type="radio" name="part-' + esc(part.id) + '" data-part="' + esc(part.id) + '" value="' + index + '"' +
+        (index === value ? ' checked' : '') + (inherited ? ' disabled' : '') + '><span>' + label + '</span></label>').join('') + '</div>';
+  return '<section class="part-row"><div class="part-status"><strong>' + esc(partName) + (part.count > 1 ? ' ×' + part.count : '') + '</strong>' +
+    options + '</div><details class="part" data-section="' + esc(part.id) + '"' + (opened.has(part.id) ? ' open' : '') +
+    '><summary><span>' + t('recipeDetails') + '</span>' +
     (part.market ? '<span class="gold small" data-price="' + esc(part.market) + '">' + priceLabel(part.market) + '</span>' : '') +
     '<span class="small ' + (value ? 'accent' : 'muted') + '">' + marker + '</span></summary><div class="part-content">' +
-    '<div class="actions">' + options + (part.market ? marketLink(part.market, 'Warframe.market') : '') + '</div>' +
+    '<div class="actions">' + (part.market ? marketLink(part.market, 'Warframe.market') : '') + '</div>' +
     '<h4>' + t('acquisition') + '</h4>' + dropList(part, frame) +
     '<h4>' + t('crafting') + (part.time ? ' · ' + timeLabel(part.time) : '') + '</h4>' +
     resourceTable(part.materials.map(row => ({ id: row.id, count: row.count * part.count })), true, partName) +
     (!root && part.parts.length ? '<h4>' + t('components') + '</h4>' + part.parts.map(node => partView(node, frame, opened, false, value === 2)).join('') : '') +
-    '</div></details>';
+    '</div></details></section>';
 }
 function renderDetail(frame, keep = false) {
-  const open = new Set(keep ? [...dialog.querySelectorAll('[data-section][open]')].map(node => node.dataset.section) : [frame.recipe?.id]);
+  const open = new Set(keep ? [...dialog.querySelectorAll('[data-section][open]')].map(node => node.dataset.section) : []);
   const y = keep ? dialog.scrollTop : 0;
   const saved = entry(state, frame);
   const progress = collected(frame, state);
@@ -527,7 +531,7 @@ function renderDetail(frame, keep = false) {
       '<label class="small">' + t('actualPurchase') + ' ' + numberInput('id="paid" placeholder="—"', saved.paid ?? '', t('actualPurchase')) +
       '</label><p class="muted small">' + t('purchaseHint') + '</p>' : '') +
     (frame.founder ? '<p class="notes">' + t('founderNotes') + '</p>' :
-      '<h3>' + t('blueprintsAndComponents') + '</h3><div class="component-overview">' + [frame.recipe, ...frame.recipe.parts].map(part => '<button data-jump="' + esc(part.id) + '">' + esc(catalogText(part, 'name')) + '<small>' + t(saved.done || saved.parts[part.id] === 2 ? 'partReady' : saved.parts[part.id] ? 'partBlueprint' : 'partMissing') + '</small></button>').join('') + '</div>' + (frame.name === 'Equinox' ? '<p class="notes">' + t('equinoxNotes') + '</p>' : '') +
+      '<h3>' + t('blueprintsAndComponents') + '</h3><p class="muted small">' + t('quickStatusHint') + '</p>' + (frame.name === 'Equinox' ? '<p class="notes">' + t('equinoxNotes') + '</p>' : '') +
       partView(frame.recipe, frame, open, true, saved.done) +
       frame.recipe.parts.map(part => partView(part, frame, open, false, saved.done)).join('') +
       '<p class="muted small">' + t('stockNotes') + '</p>') +
@@ -603,7 +607,7 @@ async function refreshMarket() {
 }
 function route() {
   const value = location.hash.slice(1);
-  tab = ['inventory', 'summary'].includes(value) ? value : 'catalog';
+  tab = ['inventory', 'summary', 'goals'].includes(value) ? value : 'catalog';
   renderPage();
 }
 function changed(event) {
@@ -660,7 +664,7 @@ function changed(event) {
     const section = input.closest('[data-section]')?.dataset.section;
     renderDetail(frame, true);
     const scope = section ? dialog.querySelector('[data-section="' + CSS.escape(section) + '"]') : dialog;
-    if (focus) scope?.querySelector('[' + focus.name + '="' + CSS.escape(focus.value) + '"]')?.focus({ preventScroll: true });
+    if (focus) scope?.querySelector('[' + focus.name + '="' + CSS.escape(focus.value) + '"]' + (input.type === 'radio' ? ':checked' : ''))?.focus({ preventScroll: true });
   } else renderPage();
 }
 app.addEventListener('click', event => {
@@ -674,7 +678,7 @@ app.addEventListener('click', event => {
       const next = index + (button.dataset.goalAction === 'up' ? -1 : 1);
       if (index >= 0 && next >= 0 && next < state.goals.length) [state.goals[index], state.goals[next]] = [state.goals[next], state.goals[index]];
     }
-    void save(); catalogView();
+    void save(); renderPage();
     app.querySelector('[data-goal-id="' + CSS.escape(button.dataset.goalId) + '"]')?.focus();
   }
   if (button.dataset.quick) { quickUpdate(button); return; }
@@ -699,13 +703,6 @@ dialog.addEventListener('click', event => {
     state.goals = state.goals.includes(frameId) ? state.goals.filter(id => id !== frameId) : [...state.goals, frameId];
     void save(); renderDetail(byId.get(frameId), true);
     dialog.querySelector('#toggle-goal').focus();
-  }
-  const jump = event.target.closest('[data-jump]');
-  if (jump) {
-    const section = dialog.querySelector('[data-section="' + CSS.escape(jump.dataset.jump) + '"]');
-    section.open = true;
-    section.scrollIntoView({ block: 'start' });
-    section.querySelector('summary').focus();
   }
   if (event.target.id === 'close') dialog.close();
   if (event.target.id === 'refresh-frame') void refreshFrame(byId.get(frameId));
