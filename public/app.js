@@ -32,6 +32,7 @@ function applyLanguage() {
   }
   if (pageMessage) app.textContent = t(pageMessage);
   if (saveMessage) saveStatus.textContent = t(saveMessage);
+  updateSaveAlert();
   if (noticeMessage) document.querySelector('#notice').textContent = t(noticeMessage);
 }
 
@@ -58,6 +59,8 @@ let tab = 'catalog';
 let group = 'all';
 let status = 'all';
 let search = '';
+let materialSearch = '';
+let onlyDeficit = false;
 let frameId;
 let quotes = {};
 let batch = null;
@@ -124,17 +127,25 @@ function restore(raw) {
   }
   return clean;
 }
+function updateSaveAlert() {
+  const alert = document.querySelector('#save-alert');
+  alert.hidden = !['browserSaveFailed', 'saveFailed', 'saveConflict'].includes(saveMessage);
+  alert.textContent = alert.hidden ? '' : t(saveMessage);
+}
 function showSaveStatus(message) {
   saveMessage = message;
   saveStatus.textContent = t(message);
+  updateSaveAlert();
 }
 async function save() {
   const snapshot = JSON.stringify(state);
   if (!portable) {
     try {
       localStorage.setItem(key, snapshot);
+      showSaveStatus('browserSaved');
       return true;
     } catch {
+      showSaveStatus('browserSaveFailed');
       notify('browserSaveFailed');
       return false;
     }
@@ -196,24 +207,15 @@ function intro(label, heading, body) {
   return '<div class="page-intro"><span class="eyebrow">' + label + '</span><h1>' + heading + '</h1><p>' + body + '</p></div>';
 }
 function catalogView() {
-  const standard = frames.length - frames.filter(frame => frame.prime).length;
   const done = frames.filter(frame => entry(state, frame).done).length;
-  const hero = frames.find(frame => frame.name === 'Excalibur Umbra');
-  app.innerHTML = '<section class="hero"><div class="hero-copy"><span class="eyebrow">' + t('personalArchive') + '</span>' +
-    '<h1>' + t('heroFirst') + ' <span>' + t('heroSecond') + '</span></h1><p>' + t('heroDescription') + '</p></div>' +
-    '<div class="hero-sigil"></div>' + image(hero, 'class="hero-art" fetchpriority="high"') +
-    '<span class="hero-tag">' + t('heroProfile') + '</span></section>' +
-    '<section aria-label="' + t('collection') + '"><div class="section-head"><div><span class="eyebrow">' + t('collectionSection') + '</span><h2>' + t('warframes') + '</h2></div>' +
-    '<p class="muted small">' + link('https://www.warframe.com/en/patch-notes', 'Warframe ' + gameVersion) +
-    ' · ' + new Date(date + 'T12:00:00Z').toLocaleDateString(locale(), { timeZone: 'UTC' }) + '</p></div>' +
-    '<div class="metrics">' + metric(t('inCatalog'), frames.length, t('standardAndPrime')) + metric(t('standardPlural'), standard, t('includingUmbra')) +
-    metric('Prime', frames.length - standard, t('includingFounder'), 'gold') +
-    metric(t('collected'), done + ' / ' + frames.length, Math.round(done / frames.length * 100) + t('collectionPercent'), 'accent') + '</div>' +
-    '<div class="toolbar"><div class="segments" aria-label="' + t('frameType') + '">' +
-    [['all',t('all')],['standard',t('standardPlural')],['prime','Prime']].map(([value, label]) => '<button data-group="' + value + '">' + label + '</button>').join('') +
-    '</div><label class="search"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="' + t('search') + '" aria-label="' + t('search') + '" value="' + esc(search) + '"></label>' +
-    '<select id="status" aria-label="' + t('collectionStatus') + '"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select></div>' +
-    '<div id="cards" class="grid"></div><p id="count" class="small muted" aria-live="polite"></p></section>';
+  const started = frames.filter(frame => { const p = collected(frame, state); return !p.done && p.have > 0; }).length;
+  app.innerHTML = '<section aria-label="' + t('collection') + '"><div class="catalog-heading"><div><span class="eyebrow">' + t('personalArchive') + '</span><h1>' + t('collection') + '</h1></div>' +
+    '<p class="collection-total"><strong>' + done + ' / ' + frames.length + '</strong> ' + t('collected') + '<small>' + started + ' · ' + t('inProgress') + '</small></p></div>' +
+    '<div class="toolbar catalog-toolbar"><label class="search"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="' + t('search') + '" aria-label="' + t('search') + '" aria-describedby="search-hint" value="' + esc(search) + '"></label>' +
+    '<div class="segments" aria-label="' + t('frameType') + '">' + [['all',t('all')],['standard',t('standardPlural')],['prime','Prime']].map(([value,label]) => '<button data-group="' + value + '">' + label + '</button>').join('') + '</div>' +
+    '<select id="status" aria-label="' + t('collectionStatus') + '"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select><button id="reset-filters">' + t('resetFilters') + '</button></div>' +
+    '<p id="search-hint" class="small muted">' + t('englishNames') + '</p><p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
+    '<p class="catalog-version small muted">' + link('https://www.warframe.com/en/patch-notes', 'Warframe ' + gameVersion) + ' · ' + new Date(date + 'T12:00:00Z').toLocaleDateString(locale(), { timeZone: 'UTC' }) + '</p></section>';
   app.querySelector('#status').value = status;
   renderCards();
 }
@@ -227,18 +229,22 @@ function renderCards() {
   const shown = frames.filter(frame => {
     const { done, have } = collected(frame, state);
     return (group === 'all' || frame.prime === (group === 'prime')) &&
-      (status === 'all' || status === 'done' && done || status === 'missing' && !done || status === 'started' && !done && have > 0) &&
+      (status === 'all' || status === 'done' && done || status === 'missing' && !done || status === 'none' && !done && have === 0 || status === 'started' && !done && have > 0) &&
       (frame.name.toLocaleLowerCase().includes(searchKey) || searchKey === 'прайм' && frame.prime);
   });
   app.querySelector('#count').textContent = t('count', { shown: n(shown.length), total: n(frames.length) });
   app.querySelector('#cards').innerHTML = shown.length ? shown.map(frame => {
     const { done, have, total } = collected(frame, state);
     const percent = done ? 100 : total ? Math.round(have / total * 100) : 0;
-    const info = done ? t('cardCollected') : total ? have + ' / ' + total + ' ' + t('cardParts') : t('founderExclusive');
+    const info = total ? stage(frame) + ' · ' + have + ' / ' + total : t('founderExclusive');
     return '<button class="card" data-frame="' + esc(frame.id) + '">' + portrait(frame) +
       '<span class="card-name"><span>' + esc(frame.name) + '</span><span aria-hidden="true">↗</span></span>' +
       '<span class="card-progress"><span>' + info + '</span><span class="line"><i style="width:' + percent + '%"></i></span></span></button>';
-  }).join('') : '<p class="empty" style="grid-column:1/-1">' + t('noFrames') + '</p>';
+  }).join('') : '<p class="empty" style="grid-column:1/-1">' + t('noFramesFiltered') + '</p>';
+}
+function stage(frame) {
+  const p = collected(frame, state);
+  return t(p.done ? 'frameCollected' : p.have ? 'inProgress' : 'notStarted');
 }
 function stockRow(id, target, withInputs, label = '') {
   const item = materials[id];
@@ -248,16 +254,16 @@ function stockRow(id, target, withInputs, label = '') {
   const name = item.wiki ? link(item.wiki, labelName) : esc(labelName);
   return '<tr data-resource="' + esc(id) + '" data-needed="' + target + '"><td><span title="' + esc(item.en) + '">' + name + '</span>' +
     (item.drops?.length ? '<details class="small muted"><summary>' + t('whereToFarm') + '</summary>' + item.drops.map(place => '<div>' + esc(place) + '</div>').join('') + '</details>' : '') +
-    '</td><td>' + n(target) + '</td><td>' +
+    '</td><td data-column="' + t('needed') + '">' + n(target) + '</td><td data-column="' + t('inStock') + '">' +
     (withInputs ? numberInput('data-stock="' + esc(id) + '"', stock, t('stockLabel') + ' ' + labelName) : n(stock)) +
-    '</td><td data-gap class="' + (gap ? 'gold' : 'accent') + '">' + n(gap) + '</td>' +
-    (withInputs ? '<td><input class="check" type="checkbox" data-fill="' + esc(id) + '" data-target="' + target +
+    '</td><td data-column="' + t('shortfall') + '" data-gap class="' + (gap ? 'gold' : 'accent') + '">' + n(gap) + '</td>' +
+    (withInputs ? '<td data-column="' + t('enough') + '"><input class="check" type="checkbox" data-fill="' + esc(id) + '" data-target="' + target +
       '" title="' + t('fillHint') + '" aria-label="' + esc(label + ' ' + t('enoughLabel') + ' ' + labelName) + '"' +
       (stock >= target && target > 0 ? ' checked' : '') + (target === 0 ? ' disabled' : '') + '></td>' : '') + '</tr>';
 }
 function resourceTable(rows, withInputs, label = '') {
   if (!rows.length) return '<p class="empty">' + t('materialsAccounted') + '</p>';
-  return '<div class="table-shell"><table><thead><tr><th>' + t('material') + '</th><th>' + t('needed') + '</th><th>' + t('inStock') + '</th><th>' + t('shortfall') + '</th>' +
+  return '<div class="table-shell resource-table"><table><thead><tr><th>' + t('material') + '</th><th>' + t('needed') + '</th><th>' + t('inStock') + '</th><th>' + t('shortfall') + '</th>' +
     (withInputs ? '<th>' + t('enough') + '</th>' : '') + '</tr></thead><tbody>' +
     rows.map(({ id, count }) => stockRow(id, count, withInputs, label)).join('') + '</tbody></table></div>';
 }
@@ -268,13 +274,25 @@ function combined() {
 }
 function inventoryView() {
   app.innerHTML = intro(t('resourcesSection'), t('inventory'), t('inventoryDescription')) +
-    resourceTable(combined(), true);
+    '<div class="toolbar"><label class="search"><input type="search" id="material-search" placeholder="' + t('materialSearch') + '" aria-label="' + t('materialSearch') + '" value="' + esc(materialSearch) + '"></label><button id="deficit-filter" aria-pressed="' + onlyDeficit + '">' + t('onlyDeficit') + '</button><button id="reset-materials">' + t('resetFilters') + '</button></div><p id="material-count" class="small muted" aria-live="polite"></p>' + resourceTable(combined(), true);
+  filterMaterials();
 }
+function filterMaterials() {
+  let visible = 0;
+  for (const row of app.querySelectorAll('[data-resource]')) {
+    const item = materials[row.dataset.resource];
+    const matches = [catalogText(item, 'name'), item.en].join(' ').toLocaleLowerCase().includes(materialSearch.trim().toLocaleLowerCase());
+    row.hidden = !matches || onlyDeficit && Number(row.dataset.needed) <= (state.stock[row.dataset.resource] ?? 0);
+    if (!row.hidden) visible++;
+  }
+  app.querySelector('#material-count').textContent = visible ? t('materialCount', { count: n(visible) }) : t('noMaterials');
+}
+function quoteStale(q) { return q.stale || !Number.isFinite(Date.parse(q.date)) || Date.now() - Date.parse(q.date) >= 86400000; }
 function priceLabel(slug) {
   const quote = quotes[slug];
   if (!quote) return '—';
   if (!Number.isFinite(quote.price)) return quote.error ? t('unavailable') : t('noOffers');
-  const stale = quote.stale || Date.now() - Date.parse(quote.date) >= 86400000;
+  const stale = quoteStale(quote);
   return n(quote.price) + ' ' + t('platinum') + (stale ? ' · ' + t('stale') : '');
 }
 function summaryView() {
@@ -290,6 +308,7 @@ function summaryView() {
     metric('Prime', prime + ' / ' + frames.filter(frame => frame.prime).length, t('finishedFrames'), 'gold') + '</div>' +
     '<div class="section-head"><div><span class="eyebrow">' + t('marketSource') + '</span><h2>' + t('primeBudget') + '</h2></div>' +
     '<div class="actions"><button class="buy" id="refresh-all">' + (batch && !batch.cancelled && batch.done < batch.total ? t('stop') : t('loadPrices')) + '</button></div></div>' +
+    (Object.values(quotes).some(q => Number.isFinite(q.price) && quoteStale(q)) ? '<p class="notes price-warning" role="status">' + t('staleTotals') + '</p>' : '') +
     '<div class="metrics">' + metric(t('allSets'), price(budget.full, budget.fullKnown), t('setCoverage', { known: n(budget.fullKnown), total: n(tradable.length) }), 'gold') +
     metric(t('stillToBuy'), price(budget.remaining, budget.remainingKnown || !budget.missing), budget.missing ? t('missingEstimate', { count: n(budget.missing) }) : t('remainingBasis'), 'gold') +
     metric(t('estimatedSpending'), price(budget.assumed, budget.assumedKnown || !budget.assumedMissing), budget.assumedMissing ? t('missingSpentEstimate', { count: n(budget.assumedMissing) }) : t('purchaseAssumption'), 'gold') +
@@ -297,7 +316,7 @@ function summaryView() {
     '<p class="notes">' + t('priceNotes') + '</p>' +
     '<p id="market-status" class="progress-text" role="status"></p><div class="table-shell"><table><thead><tr><th>Prime</th><th>' + t('status') + '</th><th>' + t('setPrice') + '</th><th>' + t('recordedPrice') + '</th></tr></thead><tbody>' +
     tradable.map(frame => '<tr><td><button class="link-button" data-frame="' + esc(frame.id) + '">' + esc(frame.name) +
-      '</button></td><td>' + (entry(state, frame).done ? t('frameCollected') : t('frameInProgress')) + '</td><td>' +
+      '</button></td><td>' + stage(frame) + '</td><td>' +
       marketLink(frame.market, priceLabel(frame.market)) + '</td><td>' + (entry(state, frame).paid === undefined ? '—' : n(entry(state, frame).paid)) + '</td></tr>').join('') + '</tbody></table></div>' +
     '<div class="section-head"><div><span class="eyebrow">' + t('foundry') + '</span><h2>' + t('remainingMaterials') + '</h2></div></div>' +
     resourceTable(missingMaterials, true) +
@@ -306,7 +325,7 @@ function summaryView() {
     frames.map(frame => {
       const progress = collected(frame, state);
       return '<tr><td><button class="link-button" data-frame="' + esc(frame.id) + '">' + esc(frame.name) + '</button></td><td>' +
-        (progress.total ? progress.have + ' / ' + progress.total : '—') + '</td><td>' + (progress.done ? t('frameCollected') : t('frameMissing')) + '</td></tr>';
+        (progress.total ? progress.have + ' / ' + progress.total : '—') + '</td><td>' + stage(frame) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   showBatchProgress();
 }
@@ -377,7 +396,7 @@ function renderDetail(frame, keep = false) {
       '<label class="small">' + t('actualPurchase') + ' ' + numberInput('id="paid" placeholder="—"', saved.paid ?? '', t('actualPurchase')) +
       '</label><p class="muted small">' + t('purchaseHint') + '</p>' : '') +
     (frame.founder ? '<p class="notes">' + t('founderNotes') + '</p>' :
-      '<h3>' + t('blueprintsAndComponents') + '</h3>' + (frame.name === 'Equinox' ? '<p class="notes">' + t('equinoxNotes') + '</p>' : '') +
+      '<h3>' + t('blueprintsAndComponents') + '</h3><div class="component-overview">' + [frame.recipe, ...frame.recipe.parts].map(part => '<button data-jump="' + esc(part.id) + '">' + esc(catalogText(part, 'name')) + '<small>' + t(saved.done || saved.parts[part.id] === 2 ? 'partReady' : saved.parts[part.id] ? 'partBlueprint' : 'partMissing') + '</small></button>').join('') + '</div>' + (frame.name === 'Equinox' ? '<p class="notes">' + t('equinoxNotes') + '</p>' : '') +
       partView(frame.recipe, frame, open, true, saved.done) +
       frame.recipe.parts.map(part => partView(part, frame, open, false, saved.done)).join('') +
       '<p class="muted small">' + t('stockNotes') + '</p>') +
@@ -475,6 +494,7 @@ function changed(event) {
       gap.className = value < goal ? 'gold' : 'accent';
     }
     save();
+    if (tab === 'inventory') filterMaterials();
     return;
   }
   else if (frame) {
@@ -502,15 +522,26 @@ app.addEventListener('click', event => {
   const button = event.target.closest('button');
   if (!button) return;
   if (button.dataset.frame) openFrame(button.dataset.frame, button);
+  if (button.id === 'reset-filters') { group = 'all'; status = 'all'; search = ''; catalogView(); app.querySelector('#search').focus(); }
+  if (button.id === 'deficit-filter') { onlyDeficit = !onlyDeficit; button.setAttribute('aria-pressed', onlyDeficit); filterMaterials(); }
+  if (button.id === 'reset-materials') { materialSearch = ''; onlyDeficit = false; inventoryView(); app.querySelector('#material-search').focus(); }
   if (button.dataset.group) { group = button.dataset.group; renderCards(); }
   if (button.id === 'refresh-all') void refreshMarket();
 });
 app.addEventListener('input', event => {
+  if (event.target.id === 'material-search') { materialSearch = event.target.value; filterMaterials(); }
   if (event.target.id === 'search') { search = event.target.value; renderCards(); }
 });
 app.addEventListener('change', changed);
 dialog.addEventListener('change', changed);
 dialog.addEventListener('click', event => {
+  const jump = event.target.closest('[data-jump]');
+  if (jump) {
+    const section = dialog.querySelector('[data-section="' + CSS.escape(jump.dataset.jump) + '"]');
+    section.open = true;
+    section.scrollIntoView({ block: 'start' });
+    section.querySelector('summary').focus();
+  }
   if (event.target.id === 'close') dialog.close();
   if (event.target.id === 'refresh-frame') void refreshFrame(byId.get(frameId));
 });
