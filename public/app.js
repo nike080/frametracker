@@ -2,6 +2,9 @@
 import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory, knownStock, nextAction, restoreProgress } from './model.js';
 import { catalogText, language, setLanguage, t } from './i18n.js';
 import { themes, resolveTheme, themeTokens } from './themes.js';
+import { frameName, matchesFrame, compareFrames } from './frame-localization.js';
+const displayFrameName = frame => frameName(frame, language);
+const frameOrder = (a, b) => compareFrames(a, b, language);
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#detail');
@@ -64,7 +67,10 @@ function applyLanguage() {
 languageSelect.addEventListener('change', () => {
   setLanguage(languageSelect.value);
   applyLanguage();
-  if (!pageMessage) renderPage();
+  if (!pageMessage) {
+    renderPage();
+    if (dialog.open && frameId) renderDetail(byId.get(frameId), true);
+  }
 });
 applyLanguage();
 
@@ -236,8 +242,8 @@ document.querySelector('#undo-progress').addEventListener('click', undoProgress)
 function goalsView() {
   const goals = scopedFrames(frames, state, 'goals');
   return '<section class="goals-panel" aria-labelledby="goals-title"><h2 id="goals-title">' + t('myGoals') + '</h2><p class="small muted">' + t('goalsHint') + '</p>' +
-    (goals.length ? '<ol class="goal-list">' + goals.map((frame, index) => '<li><button data-frame="' + esc(frame.id) + '">' + esc(frame.name) + '</button><span class="small">' + stage(frame) + '</span><div class="goal-actions">' +
-      [['up', 'goalUp', index === 0], ['down', 'goalDown', index === goals.length - 1], ['remove', 'goalRemove', false]].map(([action, label, disabled]) => '<button data-goal-action="' + action + '" data-goal-id="' + esc(frame.id) + '" aria-label="' + esc(t(label) + ': ' + frame.name) + '"' + (disabled ? ' disabled' : '') + '>' + t(label) + '</button>').join('') + '</div></li>').join('') + '</ol>' : '<p>' + t('noGoals') + '</p>') +
+    (goals.length ? '<ol class="goal-list">' + goals.map((frame, index) => '<li><button data-frame="' + esc(frame.id) + '">' + esc(displayFrameName(frame)) + '</button><span class="small">' + stage(frame) + '</span><div class="goal-actions">' +
+      [['up', 'goalUp', index === 0], ['down', 'goalDown', index === goals.length - 1], ['remove', 'goalRemove', false]].map(([action, label, disabled]) => '<button data-goal-action="' + action + '" data-goal-id="' + esc(frame.id) + '" aria-label="' + esc(t(label) + ': ' + displayFrameName(frame)) + '"' + (disabled ? ' disabled' : '') + '>' + t(label) + '</button>').join('') + '</div></li>').join('') + '</ol>' : '<p>' + t('noGoals') + '</p>') +
     '<a href="#inventory">' + t('goalResources') + '</a></section>';
 }
 function recordChange(kind, frame) {
@@ -319,7 +325,7 @@ function assistantView() {
   if (!goals.length) return '<section class="goals-panel assistant"><h2>' + t('continueBuild') + '</h2><p>' + t('startOneGoal') + '</p><a href="#catalog">' + t('catalog') + '</a></section>';
   const last = state.lastChange;
   return '<section class="goals-panel assistant" aria-labelledby="assistant-title"><h2 id="assistant-title">' + t('continueBuild') + '</h2>' +
-    (last ? '<p class="small muted">' + t('lastChange') + ': ' + esc(byId.get(last.frameId)?.name) + ' · ' + t('change_' + last.kind) + ' · ' + esc(new Date(last.at).toLocaleString(locale())) + '</p>' : '') +
+    (last ? '<p class="small muted">' + t('lastChange') + ': ' + esc(displayFrameName(byId.get(last.frameId))) + ' · ' + t('change_' + last.kind) + ' · ' + esc(new Date(last.at).toLocaleString(locale())) + '</p>' : '') +
     goals.map(frame => {
       const action = nextAction(frame, state);
       const partName = action.node ? catalogText(action.node, 'name') : '';
@@ -331,7 +337,7 @@ function assistantView() {
       if (['check', 'farm'].includes(action.kind)) controls = resourceTable([{ id: action.id, count: action.target }], true) +
         (knownStock(state, action.id) ? '<label>' + t('addLoot') + ' ' + numberInput('data-loot="' + esc(frame.id) + '"', '', t('addLoot')) + '</label>' : '<p class="small muted">' + t('unknownLootHint') + '</p>');
       const totals = [...demand([frame], state)].map(([id, count]) => ({ id, count }));
-      return '<article class="goal-plan" data-context="' + esc(frame.id) + '"><h3><button data-frame="' + esc(frame.id) + '">' + esc(frame.name) + '</button></h3>' +
+      return '<article class="goal-plan" data-context="' + esc(frame.id) + '"><h3><button data-frame="' + esc(frame.id) + '">' + esc(displayFrameName(frame)) + '</button></h3>' +
         '<p class="action-title">' + t('action_' + action.kind) + (label ? ': <strong>' + esc(label) + '</strong>' : '') + '</p>' +
         '<p class="small muted">' + t('reason_' + action.kind) + '</p>' + controls +
         (['acquire', 'farm'].includes(action.kind) ? sourceView(frame, action) : '') +
@@ -367,7 +373,6 @@ function catalogView() {
   renderCards();
 }
 function renderCards() {
-  const searchKey = search.trim().toLocaleLowerCase();
   for (const button of app.querySelectorAll('[data-group]')) {
     const active = button.dataset.group === group;
     button.classList.toggle('active', active);
@@ -379,11 +384,12 @@ function renderCards() {
     return (availabilityFilter === 'all' || frame.prime && !frame.founder && (availabilityFilter === 'resurgence' ? availability?.resurgence : (availability?.status ?? 'unknown') === availabilityFilter)) &&
       (group === 'all' || frame.prime === (group === 'prime')) &&
       (status === 'all' || status === 'done' && done || status === 'missing' && !done || status === 'none' && !done && have === 0 || status === 'started' && !done && have > 0) &&
-      (frame.name.toLocaleLowerCase().includes(searchKey) || searchKey === 'прайм' && frame.prime);
+      matchesFrame(frame, search);
   });
+  shown.sort(frameOrder);
   if (availabilitySort === 'availability') {
     const rank = frame => frame.prime && !frame.founder ? ({ available: 0, partial: 1, vaulted: 2, unknown: 3 }[liveAvailability.frames[frame.id]?.status ?? 'unknown']) : 4;
-    shown.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+    shown.sort((a, b) => rank(a) - rank(b) || frameOrder(a, b));
   }
   app.querySelector('#count').textContent = t('count', { shown: n(shown.length), total: n(frames.length) });
   app.querySelector('#cards').innerHTML = shown.length ? shown.map(frame => {
@@ -391,7 +397,7 @@ function renderCards() {
     const percent = done ? 100 : total ? Math.round(have / total * 100) : 0;
     const info = total ? stage(frame) + ' · ' + have + ' / ' + total : t('founderExclusive');
     return '<button class="card" data-frame="' + esc(frame.id) + '">' + portrait(frame) +
-      '<span class="card-name"><span>' + esc(frame.name) + '</span><span aria-hidden="true">↗</span></span>' +
+      '<span class="card-name"><span>' + esc(displayFrameName(frame)) + '</span><span aria-hidden="true">↗</span></span>' +
       availabilityBadge(frame) + '<span class="card-progress"><span>' + info + '</span><span class="line"><i style="width:' + percent + '%"></i></span></span></button>';
   }).join('') : '<p class="empty" style="grid-column:1/-1">' + t('noFramesFiltered') + '</p>';
 }
@@ -479,16 +485,16 @@ function summaryView() {
     metric(t('recordedSpending'), price(budget.spent, budget.recorded), t('purchaseCount', { count: n(budget.recorded) }), 'gold') + '</div>' +
     '<p class="notes">' + t('priceNotes') + '</p>' +
     '<p id="market-status" class="progress-text" role="status"></p><div class="table-shell"><table><thead><tr><th>Prime</th><th>' + t('status') + '</th><th>' + t('setPrice') + '</th><th>' + t('recordedPrice') + '</th></tr></thead><tbody>' +
-    tradable.map(frame => '<tr><td><button class="link-button" data-frame="' + esc(frame.id) + '">' + esc(frame.name) +
+    [...tradable].sort(frameOrder).map(frame => '<tr><td><button class="link-button" data-frame="' + esc(frame.id) + '">' + esc(displayFrameName(frame)) +
       '</button></td><td>' + stage(frame) + '</td><td>' +
       marketLink(frame.market, priceLabel(frame.market)) + '</td><td>' + (entry(state, frame).paid === undefined ? '—' : n(entry(state, frame).paid)) + '</td></tr>').join('') + '</tbody></table></div>' +
     '<div class="section-head"><div><span class="eyebrow">' + t('foundry') + '</span><h2>' + t('remainingMaterials') + '</h2></div></div>' +
     resourceTable(missingMaterials, true) +
     '<div class="section-head"><div><span class="eyebrow">' + t('collection') + '</span><h2>' + t('frameProgress') + '</h2></div></div>' +
     '<div class="table-shell"><table><thead><tr><th>' + t('warframe') + '</th><th>' + t('blueprintsAndParts') + '</th><th>' + t('status') + '</th></tr></thead><tbody>' +
-    frames.map(frame => {
+    [...frames].sort(frameOrder).map(frame => {
       const progress = collected(frame, state);
-      return '<tr><td><button class="link-button" data-frame="' + esc(frame.id) + '">' + esc(frame.name) + '</button></td><td>' +
+      return '<tr><td><button class="link-button" data-frame="' + esc(frame.id) + '">' + esc(displayFrameName(frame)) + '</button></td><td>' +
         (progress.total ? progress.have + ' / ' + progress.total : '—') + '</td><td>' + stage(frame) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   showBatchProgress();
@@ -500,7 +506,7 @@ function settingsView() {
   settingsControls.querySelector('#online-controls').innerHTML = availabilityToolbar();
   const select = settingsControls.querySelector('#price-frame');
   const previous = select.value;
-  select.innerHTML = tradable.map(frame => '<option value="' + esc(frame.id) + '">' + esc(frame.name) + '</option>').join('');
+  select.innerHTML = [...tradable].sort(frameOrder).map(frame => '<option value="' + esc(frame.id) + '">' + esc(displayFrameName(frame)) + '</option>').join('');
   if (byId.has(previous)) select.value = previous;
   updateMarketView();
 }
@@ -566,7 +572,7 @@ function renderDetail(frame, keep = false) {
   const progress = collected(frame, state);
   dialog.innerHTML = '<div class="detail-head">' + portrait(frame) + '<div><span class="eyebrow">' +
     (frame.founder ? t('founderExclusive') : frame.prime ? t('primeArchive') : t('tennoArchive')) +
-    '</span><h2 id="frame-title">' + esc(frame.name) + '</h2>' + link(frame.wiki, 'Warframe Wiki') +
+    '</span><h2 id="frame-title">' + esc(displayFrameName(frame)) + '</h2>' + link(frame.wiki, 'Warframe Wiki') +
     '</div><button class="close" aria-label="' + t('close') + '" id="close">×</button></div><div class="detail-body">' +
     '<label class="owned"><input class="check" type="checkbox" id="owned"' + (saved.done ? ' checked' : '') +
     '> <strong>' + t('frameOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +
@@ -618,7 +624,7 @@ async function refreshFrame(frame, button) {
     button.disabled = false;
     button.textContent = results.some(result => result.error) ? t('retryPrices') : t('checkPrices');
     const status = settingsControls.querySelector('#frame-price-status');
-    status.textContent = frame.name + ' · ' + (results.some(result => result.error) ? t('unavailable') : priceLabel(frame.market));
+    status.textContent = displayFrameName(frame) + ' · ' + (results.some(result => result.error) ? t('unavailable') : priceLabel(frame.market));
   }
 }
 function updateMarketView() {
@@ -639,7 +645,7 @@ async function refreshMarket() {
     updateMarketView();
     return;
   }
-  const slugs = [...new Set([...tradable.map(frame => frame.market), ...tradable.flatMap(frameSlugs)])];
+  const slugs = [...new Set([...[...tradable].sort(frameOrder).map(frame => frame.market), ...tradable.flatMap(frameSlugs)])];
   const task = { total: slugs.length, done: 0, errors: 0, cancelled: false };
   batch = task;
   updateMarketView();
