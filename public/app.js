@@ -24,7 +24,7 @@ const numberInput = (attr, value, label) => '<input class="stock" type="number" 
 const languageSelect = document.querySelector('#language');
 const settingsControls = document.querySelector('#settings-controls');
 const themeSelect = document.querySelector('#theme');
-let themeId = 'orokin';
+let themeId = 'stalker';
 let themeSaveFailed = false;
 try { themeId = resolveTheme(localStorage.getItem('frametracker:theme')).id; } catch { /* Session appearance remains available. */ }
 function applyTheme() {

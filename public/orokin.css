@@ -28,3 +28,6 @@ dialog{background:var(--bg);color:var(--ink);border:1px solid var(--edge);box-sh
 .catalog-version,.availability-info,.source-metadata,footer{font-size:.75rem;line-height:1.5}
 .availability-info summary,.source-help summary{font-size:.78rem;font-weight:400;color:var(--muted)}
 .source-metadata{color:var(--muted);margin-top:12px}
+
+/* Stalker keeps the shared faction layout and changes only its identity. */
+:root[data-theme="stalker"] .portrait.prime{background:radial-gradient(ellipse at 50% 80%,#4a202b,transparent 78%)}
