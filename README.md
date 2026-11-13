@@ -1,6 +1,6 @@
 # FrameTracker
 
-A personal Warframe collection tracker for planning builds, farming parts, and keeping track of Platinum spending. Track standard and Prime Warframes, their blueprints and components, crafting materials, and Prime relics in one place.
+A personal Warframe collection tracker for planning builds, farming parts, and keeping track of Platinum spending. Track Warframes, primary, secondary and melee weapons, Archwings and their weapons, Necramechs, and companions in one place. Share crafting materials, goals and inventory across collections, and see overall and category progress on the home page.
 
 FrameTracker is an early version looking for player feedback. English and Russian are available through **Settings → Language**. The default language is Russian; your browser remembers your choice for the current app address.
 

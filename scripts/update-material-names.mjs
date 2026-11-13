@@ -23,6 +23,11 @@ try {
   const source = 'https://content.warframe.com/PublicExport/Manifest/' + manifest;
   const { ExportResources } = JSON.parse(await download(source, 'frames.json'));
   const names = new Map(ExportResources.map(frame => [frame.uniqueName, frame.name]));
+  for (const kind of ['Weapons', 'Warframes', 'Sentinels']) {
+    const file = index.split(/\r?\n/).find(line => line.startsWith('Export' + kind + '_ru.json!'));
+    const data = JSON.parse(await download('https://content.warframe.com/PublicExport/Manifest/' + file, kind + '.json'));
+    for (const rows of Object.values(data).filter(Array.isArray)) for (const row of rows) if (row.uniqueName && row.name) names.set(row.uniqueName, row.name);
+  }
   const catalogFile = new URL('../public/catalog.json', import.meta.url);
   const catalogText = await readFile(catalogFile, 'utf8');
   const catalog = JSON.parse(catalogText);
@@ -33,13 +38,9 @@ try {
   });
   await writeFile(new URL('./material-names.json', import.meta.url), JSON.stringify({ provenance: { retrievedAt: new Date().toISOString(), indexUrl, source }, names: Object.fromEntries(entries) }, null, 2) + '\n');
   const snapshotNames = Object.fromEntries(entries);
-  const localized = catalogText.replace(/^(\s*)("[^"\n]+"):\s*(\{[^\n]+\})(,?)$/gm, (line, space, key, value, comma) => {
-    const id = JSON.parse(key);
-    if (!snapshotNames[id]) return line;
-    const row = JSON.parse(value); row.name = snapshotNames[id];
-    return space + key + ': ' + JSON.stringify(row) + comma;
-  });
-  await writeFile(catalogFile, localized);
+  for (const [id, name] of entries) catalog.materials[id].name = name;
+  for (const item of catalog.equipment ?? []) item.nameRu = (names.get(item.id) ?? item.name).replace(/<[^>]+>\s*/g, '');
+  await writeFile(catalogFile, JSON.stringify(catalog, null, 2) + '\n');
   console.log('Saved ' + entries.length + ' official Russian resource names');
 } finally {
   if (!resolve(working).startsWith(resolve(tmpdir()) + sep)) throw new Error('Unsafe temporary directory');

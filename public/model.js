@@ -102,6 +102,7 @@ export function estimate(frames, state, quotes) {
       if (!saved.parts[node.id]) remaining.push(node);
       if (saved.parts[node.id] !== 2) node.parts.forEach(visit);
     }
+    if (!frame.recipe) { totals.missing++; continue; }
     visit(frame.recipe);
     if (!remaining.length) continue;
     const prices = remaining.map(node => price(node.market));

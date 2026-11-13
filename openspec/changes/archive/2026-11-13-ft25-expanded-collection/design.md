@@ -1,0 +1,5 @@
+# Design
+
+Keep the existing Warframe snapshot and add an equipment array with stable Lotus identifiers and explicit categories. Combine both arrays at the application and server boundaries. Reuse collection cards, recipe traversal, goals, inventory, unknown/zero quantities, undo and save/import/export without a second state store. Items without exported recipes support ownership and show an explicit missing-recipe explanation. Use WFCD item metadata, official recipe exports, Russian names and bundled official resource icons. Market/relic metadata is mapped by full component name. Existing Overframe mappings remain available for known families; unmapped items have no invented URL.
+
+Home progress counts completed ownership, including items without crafting recipes. The overall bar counts every item once. Five category cards show Warframes, ordinary weapons (primary/secondary/melee), Archwings and their weapons (three separate child counts), Necramechs and companions. Pets and Sentinels source files feed one pets category; biological companions without recipes remain ownership-only. Localized official Sentinel exports supply companion names.
