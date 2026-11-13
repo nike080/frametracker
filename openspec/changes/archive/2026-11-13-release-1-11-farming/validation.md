@@ -24,4 +24,4 @@ Final rebuilt dist/FrameTracker.exe passed the portable smoke check (embedded as
 ## Release acceptance
 Owner explicitly accepted the result and requested archive and release on 2026-11-13. This supersedes pending acceptance tasks. No separate ten-frame personal history or farming-choice interview is claimed. Requirements merged into farming-planning master spec and archive visibility requirement updated in live-prime-availability.
 
-Final release checks: openspec validate --all --strict passed (19 specifications), npm test passed (55 tests), freshly rebuilt 1.11.0 portable smoke check passed. EXE SHA-256: 787cc0dd092a157b034dae0d6d017b2060568411454f3a467dec05f8131c4900. Test processes closed.
+Final release checks: openspec validate --all --strict passed (19 specifications), npm test passed (55 tests), freshly rebuilt 1.11.0 portable smoke check passed. Release binary checksum is distributed in SHA256SUMS.txt. Test processes closed.
