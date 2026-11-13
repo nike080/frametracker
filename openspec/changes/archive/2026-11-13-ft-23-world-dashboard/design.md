@@ -1,0 +1,3 @@
+# Design
+
+Use existing theme and Prime availability. Proxy eight independent WarframeStat endpoints per language with 60-second cache, request coalescing, 12-second timeouts and explicit stale/partial fallback. Track failed sections separately so working endpoints survive outages. Preserve source mission/challenge text when the provider does not translate it. Refresh visible page every minute and on resume. Update countdown text in place. Expired content awaits refresh; never extrapolate phases. Standing resets globally at 00:00 UTC, formatted in browser local time. Include assets in portable build.

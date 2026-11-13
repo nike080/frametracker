@@ -27,6 +27,10 @@ npm start
 
 Open [http://127.0.0.1:4187/](http://127.0.0.1:4187/) in your browser. Keep the terminal open while using FrameTracker; press Ctrl+C to stop it.
 
+## Home dashboard
+
+The new home page shows live PC world cycles for the Plains of Eidolon, Orb Vallis, Cambion Drift, Duviri, Zariman and regular Earth missions, plus current Prime availability, the daily sortie and Nightwave challenges. The daily standing reset counts down to 00:00 UTC and displays the reset in your local time zone. Data refreshes while the page is visible; unavailable and stale sources are marked. Mission and challenge descriptions retain the language returned by the provider. Descriptive cards lead to your collection, goals, inventory, summary and settings.
+
 ## What you can track
 
 The catalog combines search, frame type, collection status, Prime relic availability and sorting in one filter panel. Relic data details remain under **About relic data**; manual refresh controls are in **Settings → Online data**, together with batch and individual Prime price requests. Use the **My goals** tab to reorder collection goals, continue collecting and record results.

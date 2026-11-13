@@ -1,4 +1,5 @@
 const messages = {
+  home: ['Главная', 'Home'],
   popularBuilds: ['Популярные билды · Overframe', 'Popular builds · Overframe'],
   settings: ['Настройки', 'Settings'],
   appearance: ['Оформление арсенала', 'Arsenal appearance'],
