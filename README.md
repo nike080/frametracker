@@ -2,7 +2,7 @@
 
 A personal Warframe collection tracker for planning builds, farming parts, and keeping track of Platinum spending. Track standard and Prime Warframes, their blueprints and components, crafting materials, and Prime relics in one place.
 
-FrameTracker is an early version looking for player feedback. English and Russian are available on every page through the **RU / EN** switch in the top-right corner. The default language is Russian; your browser remembers your choice for the current app address.
+FrameTracker is an early version looking for player feedback. English and Russian are available through **Settings → Language**. The default language is Russian; your browser remembers your choice for the current app address.
 
 ## Download for Windows
 
@@ -12,10 +12,10 @@ Requires **Windows x64**. No installation or Node.js is needed.
 
 1. Download `FrameTracker.exe` using the link above.
 2. Double-click it. The app starts locally and opens in your browser.
-3. Select **EN** in the top-right corner for English.
+3. Select **Settings → Language → EN** for English.
 4. Keep the FrameTracker window open while using the app; close it to exit.
 
-The executable is unsigned, so Windows may display a warning. Progress is stored in `%LOCALAPPDATA%\FrameTracker`. To update, close the old app and replace the EXE with the new download. Use **Data → Export progress** to back up your collection or move it to another PC.
+The executable is unsigned, so Windows may display a warning. Progress is stored in `%LOCALAPPDATA%\FrameTracker`. To update, close the old app and replace the EXE with the new download. Use **Settings → Export progress** to back up your collection or move it to another PC.
 
 ## Run from source
 
@@ -29,7 +29,9 @@ Open [http://127.0.0.1:4187/](http://127.0.0.1:4187/) in your browser. Keep the 
 
 ## What you can track
 
-The catalog combines search, frame type, collection status, Prime relic availability and sorting in one filter panel. Relic data details and refresh are available under **About relic data**. Use the **My goals** tab to reorder collection goals, continue collecting and record results.
+The catalog combines search, frame type, collection status, Prime relic availability and sorting in one filter panel. Relic data details remain under **About relic data**; manual refresh controls are in **Settings → Online data**, together with batch and individual Prime price requests. Use the **My goals** tab to reorder collection goals, continue collecting and record results.
+
+The Orokin Legacy interface offers 23 palettes in **Settings → Faction palette**: the base ivory/gold theme and 22 faction identities. Each owns its light or dark surfaces, accents, available emblem and original thematic motto in both languages. There are no separate accent or brightness controls. Appearance is stored separately from progress in the browser for the current app address; imports do not overwrite it. See [asset attribution](docs/appearance-assets.md).
 
 In a frame's detail panel, component status controls are always visible. Recipes and sources start collapsed and can be expanded separately inside a fixed-height panel. Marking an existing component as crafted does not deduct materials; update remaining stock manually.
 

@@ -1,6 +1,7 @@
 
 import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory, knownStock, nextAction, restoreProgress } from './model.js';
 import { catalogText, language, setLanguage, t } from './i18n.js';
+import { themes, resolveTheme, themeTokens } from './themes.js';
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#detail');
@@ -14,6 +15,29 @@ const marketLink = (slug, label) => link('https://warframe.market/items/' + slug
 const image = (frame, extra = '') => '<img ' + extra + ' data-portrait alt="" src="https://cdn.warframestat.us/img/' + encodeURIComponent(frame.image) + '">';
 const numberInput = (attr, value, label) => '<input class="stock" type="number" min="0" step="1" max="999999999" ' + attr + ' value="' + value + '" aria-label="' + esc(label) + '">';
 const languageSelect = document.querySelector('#language');
+const settingsControls = document.querySelector('#settings-controls');
+const themeSelect = document.querySelector('#theme');
+let themeId = 'orokin';
+let themeSaveFailed = false;
+try { themeId = resolveTheme(localStorage.getItem('frametracker:theme')).id; } catch { /* Session appearance remains available. */ }
+function applyTheme() {
+  const theme = resolveTheme(themeId);
+  for (const [name, value] of Object.entries(themeTokens(theme))) document.documentElement.style.setProperty('--' + name, value);
+  document.documentElement.style.colorScheme = theme.dark ? 'dark' : 'light';
+  document.documentElement.dataset.theme = theme.id;
+  document.documentElement.style.setProperty('--emblem', 'url("' + (theme.emblem || '/mark.svg') + '")');
+  document.querySelector('#faction-motto').textContent = language === 'en' ? theme.mottoEn : theme.motto;
+  themeSelect.innerHTML = themes.map(item => '<option value="' + item.id + '">' + esc(language === 'en' ? item.en : item.name) + '</option>').join('');
+  themeSelect.value = theme.id;
+  themeSelect.setAttribute('aria-label', t('factionPalette'));
+  document.querySelector('#theme-status').textContent = themeSaveFailed ? t('themeSaveFailed') : '';
+}
+themeSelect.addEventListener('change', () => {
+  themeId = resolveTheme(themeSelect.value).id;
+  themeSaveFailed = false;
+  try { localStorage.setItem('frametracker:theme', themeId); } catch { themeSaveFailed = true; }
+  applyTheme();
+});
 let pageMessage = 'loading';
 let saveMessage;
 let noticeMessage;
@@ -33,6 +57,7 @@ function applyLanguage() {
   if (pageMessage) app.textContent = t(pageMessage);
   if (saveMessage) saveStatus.textContent = t(saveMessage);
   updateSaveAlert();
+  applyTheme();
   if (noticeMessage) document.querySelector('#notice').textContent = t(noticeMessage);
 }
 
@@ -230,7 +255,7 @@ function availabilityFilters() {
 function availabilityToolbar() {
   const dates = Object.values(liveAvailability.sources).filter(Boolean).map(value => new Date(value).toLocaleString(locale()));
   return '<div class="availability-tools"><details class="availability-info"><summary>' + t('availabilityData') + ' · ' + t(availabilityLoading ? 'availabilityLoading' : liveAvailability.stale ? 'stale' : 'availabilityCurrent') + '</summary>' +
-    '<button id="refresh-availability"' + (availabilityLoading ? ' disabled' : '') + '>' + t(availabilityLoading ? 'availabilityLoading' : 'availabilityRefresh') + '</button>' +
+    (tab === 'settings' ? '<button id="refresh-availability"' + (availabilityLoading ? ' disabled' : '') + '>' + t(availabilityLoading ? 'availabilityLoading' : 'availabilityRefresh') + '</button>' : '<a href="#settings">' + t('onlineSettings') + ' →</a>') +
     '<p class="small muted" role="status">' + t(availabilityLoading ? 'availabilityLoading' : liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') +
     (dates.length ? ' · ' + t('availabilityFetched') + ': ' + esc(dates.join(' / ')) : '') +
     (liveAvailability.expiry ? ' · ' + t('rotationEnds') + ': ' + esc(new Date(liveAvailability.expiry).toLocaleString(locale())) : '') + '</p>' +
@@ -252,13 +277,13 @@ async function refreshAvailability(force = false) {
   if (availabilityLoading) return;
   availabilityLoading = true;
   const update = () => {
-    if (tab !== 'catalog') return;
+    if (!['catalog', 'settings'].includes(tab)) return;
     const panel = app.querySelector('.availability-tools');
     if (!panel) return;
     const expanded = panel.querySelector('details').open;
     panel.outerHTML = availabilityToolbar();
     app.querySelector('.availability-info').open = expanded;
-    renderCards();
+    if (tab === 'catalog') renderCards();
   };
   update();
   try {
@@ -439,7 +464,7 @@ function summaryView() {
     metric(t('standardPlural'), done.length - prime + ' / ' + (frames.length - frames.filter(frame => frame.prime).length)) +
     metric('Prime', prime + ' / ' + frames.filter(frame => frame.prime).length, t('finishedFrames'), 'gold') + '</div>' +
     '<div class="section-head"><div><span class="eyebrow">' + t('marketSource') + '</span><h2>' + t('primeBudget') + '</h2></div>' +
-    '<div class="actions"><button class="buy" id="refresh-all">' + (batch && !batch.cancelled && batch.done < batch.total ? t('stop') : t('loadPrices')) + '</button></div></div>' +
+    '<a href="#settings">' + t('onlineSettings') + ' →</a></div>' +
     (Object.values(quotes).some(q => Number.isFinite(q.price) && quoteStale(q)) ? '<p class="notes price-warning" role="status">' + t('staleTotals') + '</p>' : '') +
     '<div class="metrics">' + metric(t('allSets'), price(budget.full, budget.fullKnown), t('setCoverage', { known: n(budget.fullKnown), total: n(tradable.length) }), 'gold') +
     metric(t('stillToBuy'), price(budget.remaining, budget.remainingKnown || !budget.missing), budget.missing ? t('missingEstimate', { count: n(budget.missing) }) : t('remainingBasis'), 'gold') +
@@ -461,7 +486,19 @@ function summaryView() {
     }).join('') + '</tbody></table></div>';
   showBatchProgress();
 }
+function settingsView() {
+  app.innerHTML = intro(t('settings'), t('settings'), t('settingsHint'));
+  settingsControls.hidden = false;
+  app.append(settingsControls);
+  settingsControls.querySelector('#online-controls').innerHTML = availabilityToolbar();
+  const select = settingsControls.querySelector('#price-frame');
+  const previous = select.value;
+  select.innerHTML = tradable.map(frame => '<option value="' + esc(frame.id) + '">' + esc(frame.name) + '</option>').join('');
+  if (byId.has(previous)) select.value = previous;
+  updateMarketView();
+}
 function renderPage() {
+  settingsControls.remove();
   for (const anchor of document.querySelectorAll('[data-tab]')) {
     const active = anchor.dataset.tab === tab;
     anchor.classList.toggle('active', active);
@@ -471,6 +508,7 @@ function renderPage() {
   if (tab === 'inventory') inventoryView();
   else if (tab === 'goals') app.innerHTML = intro(t('personalArchive'), t('myGoals'), t('goalsPageHint')) + goalsView() + assistantView();
   else if (tab === 'summary') summaryView();
+  else if (tab === 'settings') settingsView();
   else catalogView();
 }
 
@@ -527,7 +565,7 @@ function renderDetail(frame, keep = false) {
     '> <strong>' + t('frameOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +
     availabilityDetails(frame) + '<div class="toolbar">' + (frame.recipe ? '<button id="toggle-goal" aria-pressed="' + state.goals.includes(frame.id) + '">' + t(state.goals.includes(frame.id) ? 'goalRemove' : 'goalAdd') + '</button>' : '') + undoButton('undo-detail') + '</div>' +
     (frame.market ? '<div class="buy-line"><span class="gold">' + t('setLabel') + ' <strong data-price="' + esc(frame.market) + '">' + priceLabel(frame.market) + '</strong></span> ' +
-      marketLink(frame.market, 'Warframe.market') + ' <button class="buy" id="refresh-frame">' + t('checkPrices') + '</button></div>' +
+      marketLink(frame.market, 'Warframe.market') + '</div>' +
       '<label class="small">' + t('actualPurchase') + ' ' + numberInput('id="paid" placeholder="—"', saved.paid ?? '', t('actualPurchase')) +
       '</label><p class="muted small">' + t('purchaseHint') + '</p>' : '') +
     (frame.founder ? '<p class="notes">' + t('founderNotes') + '</p>' :
@@ -566,13 +604,21 @@ function loadPrice(slug) {
   inflight.set(slug, promise);
   return promise;
 }
-async function refreshFrame(frame) {
-  const button = dialog.querySelector('#refresh-frame');
+async function refreshFrame(frame, button) {
   if (button) { button.disabled = true; button.textContent = t('loadingPrices'); }
   const results = await Promise.all(frameSlugs(frame).map(loadPrice));
-  if (button?.isConnected) {
+  if (button) {
     button.disabled = false;
     button.textContent = results.some(result => result.error) ? t('retryPrices') : t('checkPrices');
+    const status = settingsControls.querySelector('#frame-price-status');
+    status.textContent = frame.name + ' · ' + (results.some(result => result.error) ? t('unavailable') : priceLabel(frame.market));
+  }
+}
+function updateMarketView() {
+  if (tab === 'summary') summaryView();
+  if (tab === 'settings') {
+    settingsControls.querySelector('#refresh-all').textContent = batch && !batch.cancelled && batch.done < batch.total ? t('stop') : t('loadPrices');
+    showBatchProgress();
   }
 }
 function showBatchProgress() {
@@ -583,13 +629,13 @@ function showBatchProgress() {
 async function refreshMarket() {
   if (batch && !batch.cancelled && batch.done < batch.total) {
     batch.cancelled = true;
-    summaryView();
+    updateMarketView();
     return;
   }
   const slugs = [...new Set([...tradable.map(frame => frame.market), ...tradable.flatMap(frameSlugs)])];
   const task = { total: slugs.length, done: 0, errors: 0, cancelled: false };
   batch = task;
-  summaryView();
+  updateMarketView();
   for (const slug of slugs) {
     if (task.cancelled) break;
     const result = await loadPrice(slug);
@@ -599,15 +645,15 @@ async function refreshMarket() {
       task.cancelled = true;
       notify('marketDown');
     }
-    if (batch === task && tab === 'summary') {
-      if (task.done % 8 === 0 || task.done === task.total || task.cancelled) summaryView();
+    if (batch === task && ['summary', 'settings'].includes(tab)) {
+      if (task.done % 8 === 0 || task.done === task.total || task.cancelled) updateMarketView();
       else showBatchProgress();
     }
   }
 }
 function route() {
   const value = location.hash.slice(1);
-  tab = ['inventory', 'summary', 'goals'].includes(value) ? value : 'catalog';
+  tab = ['inventory', 'summary', 'goals', 'settings'].includes(value) ? value : 'catalog';
   renderPage();
 }
 function changed(event) {
@@ -689,6 +735,10 @@ app.addEventListener('click', event => {
   if (button.id === 'reset-materials') { materialSearch = ''; onlyDeficit = false; inventoryView(); app.querySelector('#material-search').focus(); }
   if (button.dataset.group) { group = button.dataset.group; renderCards(); }
   if (button.id === 'refresh-all') void refreshMarket();
+  if (button.id === 'refresh-selected') {
+    const frame = byId.get(settingsControls.querySelector('#price-frame').value);
+    if (frame?.market) void refreshFrame(frame, button);
+  }
 });
 app.addEventListener('input', event => {
   if (event.target.id === 'material-search') { materialSearch = event.target.value; filterMaterials(); }
@@ -705,7 +755,6 @@ dialog.addEventListener('click', event => {
     dialog.querySelector('#toggle-goal').focus();
   }
   if (event.target.id === 'close') dialog.close();
-  if (event.target.id === 'refresh-frame') void refreshFrame(byId.get(frameId));
 });
 dialog.addEventListener('close', () => {
   const openerId = lastOpener?.dataset.frame;
