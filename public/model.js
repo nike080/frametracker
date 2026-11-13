@@ -1,5 +1,22 @@
 
-export const empty = () => ({ frames: {}, stock: {} });
+export const empty = () => ({ frames: {}, stock: {}, goals: [] });
+export function normalizeGoals(value, frames) {
+  const valid = new Set(frames.filter(frame => frame.recipe).map(frame => frame.id));
+  return Array.isArray(value) ? [...new Set(value.filter(id => typeof id === 'string' && valid.has(id)))] : [];
+}
+export function scopedFrames(frames, state, scope) {
+  const byId = new Map(frames.map(frame => [frame.id, frame]));
+  return scope === 'all' ? frames : normalizeGoals(state.goals, frames).map(id => byId.get(id));
+}
+
+export function progressHistory() {
+  let previous;
+  return {
+    get available() { return previous !== undefined; },
+    capture(state) { previous = structuredClone(state); },
+    undo() { const result = previous; previous = undefined; return result; },
+  };
+}
 export const amount = value => Number.isSafeInteger(Number(value)) && Number(value) >= 0 ? Number(value) : 0;
 export const flatten = node => node ? [node, ...node.parts.flatMap(flatten)] : [];
 export const entry = (state, frame) => state.frames[frame.id] ?? { parts: {} };

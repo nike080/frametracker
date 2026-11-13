@@ -1,5 +1,5 @@
 
-import { empty, amount, flatten, entry, collected, demand, estimate } from './model.js';
+import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory } from './model.js';
 import { catalogText, language, setLanguage, t } from './i18n.js';
 
 const app = document.querySelector('#app');
@@ -61,6 +61,8 @@ let status = 'all';
 let search = '';
 let materialSearch = '';
 let onlyDeficit = false;
+let resourceScope = 'goals';
+const history = progressHistory();
 let frameId;
 let quotes = {};
 let batch = null;
@@ -107,6 +109,7 @@ function restore(raw) {
     throw new Error(t('invalidProgress'));
   }
   const clean = empty();
+  clean.goals = normalizeGoals(raw.goals, frames);
   for (const [id, item] of Object.entries(raw.frames)) {
     if (!id.startsWith('/Lotus/') || !record(item)) continue;
     const root = byId.get(id)?.recipe?.id;
@@ -206,6 +209,30 @@ function metric(label, value, detail = '', tone = '') {
 function intro(label, heading, body) {
   return '<div class="page-intro"><span class="eyebrow">' + label + '</span><h1>' + heading + '</h1><p>' + body + '</p></div>';
 }
+function undoButton(id) {
+  return '<button id="' + id + '"' + (history.available ? '' : ' disabled') + '>' + t('undoProgress') + '</button>';
+}
+function updateUndo() {
+  for (const button of document.querySelectorAll('#undo-progress, #undo-detail')) button.disabled = !history.available;
+}
+function captureProgress() { history.capture(state); updateUndo(); }
+function undoProgress() {
+  if (!history.available) return;
+  state = history.undo();
+  void save();
+  renderPage();
+  if (dialog.open && frameId) renderDetail(byId.get(frameId), true);
+  updateUndo();
+}
+document.querySelector('#undo-progress').addEventListener('click', undoProgress);
+
+function goalsView() {
+  const goals = scopedFrames(frames, state, 'goals');
+  return '<section class="goals-panel" aria-labelledby="goals-title"><h2 id="goals-title">' + t('myGoals') + '</h2><p class="small muted">' + t('goalsHint') + '</p>' +
+    (goals.length ? '<ol class="goal-list">' + goals.map((frame, index) => '<li><button data-frame="' + esc(frame.id) + '">' + esc(frame.name) + '</button><span class="small">' + stage(frame) + '</span><div class="goal-actions">' +
+      [['up', 'goalUp', index === 0], ['down', 'goalDown', index === goals.length - 1], ['remove', 'goalRemove', false]].map(([action, label, disabled]) => '<button data-goal-action="' + action + '" data-goal-id="' + esc(frame.id) + '" aria-label="' + esc(t(label) + ': ' + frame.name) + '"' + (disabled ? ' disabled' : '') + '>' + t(label) + '</button>').join('') + '</div></li>').join('') + '</ol>' : '<p>' + t('noGoals') + '</p>') +
+    '<a href="#inventory">' + t('goalResources') + '</a></section>';
+}
 function catalogView() {
   const done = frames.filter(frame => entry(state, frame).done).length;
   const started = frames.filter(frame => { const p = collected(frame, state); return !p.done && p.have > 0; }).length;
@@ -214,7 +241,7 @@ function catalogView() {
     '<div class="toolbar catalog-toolbar"><label class="search"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="' + t('search') + '" aria-label="' + t('search') + '" aria-describedby="search-hint" value="' + esc(search) + '"></label>' +
     '<div class="segments" aria-label="' + t('frameType') + '">' + [['all',t('all')],['standard',t('standardPlural')],['prime','Prime']].map(([value,label]) => '<button data-group="' + value + '">' + label + '</button>').join('') + '</div>' +
     '<select id="status" aria-label="' + t('collectionStatus') + '"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select><button id="reset-filters">' + t('resetFilters') + '</button></div>' +
-    '<p id="search-hint" class="small muted">' + t('englishNames') + '</p><p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
+    '<p id="search-hint" class="small muted">' + t('englishNames') + '</p>' + goalsView() + '<p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
     '<p class="catalog-version small muted">' + link('https://www.warframe.com/en/patch-notes', 'Warframe ' + gameVersion) + ' · ' + new Date(date + 'T12:00:00Z').toLocaleDateString(locale(), { timeZone: 'UTC' }) + '</p></section>';
   app.querySelector('#status').value = status;
   renderCards();
@@ -267,17 +294,24 @@ function resourceTable(rows, withInputs, label = '') {
     (withInputs ? '<th>' + t('enough') + '</th>' : '') + '</tr></thead><tbody>' +
     rows.map(({ id, count }) => stockRow(id, count, withInputs, label)).join('') + '</tbody></table></div>';
 }
-function combined() {
-  const totals = demand(frames, state);
+function combined(scope = 'all') {
+  const totals = demand(scopedFrames(frames, state, scope), state);
   return Object.keys(materials).map(id => ({ id, count: totals.get(id) ?? 0 })).sort((a, b) =>
     Number(b.count > 0) - Number(a.count > 0) || catalogText(materials[a.id], 'name').localeCompare(catalogText(materials[b.id], 'name'), locale()));
 }
 function inventoryView() {
   app.innerHTML = intro(t('resourcesSection'), t('inventory'), t('inventoryDescription')) +
-    '<div class="toolbar"><label class="search"><input type="search" id="material-search" placeholder="' + t('materialSearch') + '" aria-label="' + t('materialSearch') + '" value="' + esc(materialSearch) + '"></label><button id="deficit-filter" aria-pressed="' + onlyDeficit + '">' + t('onlyDeficit') + '</button><button id="reset-materials">' + t('resetFilters') + '</button></div><p id="material-count" class="small muted" aria-live="polite"></p>' + resourceTable(combined(), true);
+    '<div class="toolbar"><label>' + t('resourceScope') + ' <select id="resource-scope"><option value="goals">' + t('myGoals') + '</option><option value="all">' + t('entireCollection') + '</option></select></label><label class="search"><input type="search" id="material-search" placeholder="' + t('materialSearch') + '" aria-label="' + t('materialSearch') + '" value="' + esc(materialSearch) + '"></label><button id="deficit-filter" aria-pressed="' + onlyDeficit + '">' + t('onlyDeficit') + '</button><button id="reset-materials">' + t('resetFilters') + '</button></div>' +
+    (resourceScope === 'goals' && !state.goals.length ? '<p class="notes">' + t('noGoals') + ' <a href="#catalog">' + t('catalog') + '</a></p>' : '') +
+    '<p id="material-count" class="small muted" aria-live="polite"></p>' + (resourceScope === 'goals' && !state.goals.length ? '' : resourceTable(combined(resourceScope).filter(row => resourceScope === 'all' || row.count > 0), true));
+  app.querySelector('#resource-scope').value = resourceScope;
   filterMaterials();
 }
 function filterMaterials() {
+  if (!app.querySelector('[data-resource]')) {
+    app.querySelector('#material-count').textContent = '';
+    return;
+  }
   let visible = 0;
   for (const row of app.querySelectorAll('[data-resource]')) {
     const item = materials[row.dataset.resource];
@@ -391,6 +425,7 @@ function renderDetail(frame, keep = false) {
     '</div><button class="close" aria-label="' + t('close') + '" id="close">×</button></div><div class="detail-body">' +
     '<label class="owned"><input class="check" type="checkbox" id="owned"' + (saved.done ? ' checked' : '') +
     '> <strong>' + t('frameOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +
+    '<div class="toolbar">' + (frame.recipe ? '<button id="toggle-goal" aria-pressed="' + state.goals.includes(frame.id) + '">' + t(state.goals.includes(frame.id) ? 'goalRemove' : 'goalAdd') + '</button>' : '') + undoButton('undo-detail') + '</div>' +
     (frame.market ? '<div class="buy-line"><span class="gold">' + t('setLabel') + ' <strong data-price="' + esc(frame.market) + '">' + priceLabel(frame.market) + '</strong></span> ' +
       marketLink(frame.market, 'Warframe.market') + ' <button class="buy" id="refresh-frame">' + t('checkPrices') + '</button></div>' +
       '<label class="small">' + t('actualPurchase') + ' ' + numberInput('id="paid" placeholder="—"', saved.paid ?? '', t('actualPurchase')) +
@@ -477,8 +512,10 @@ function route() {
 }
 function changed(event) {
   const input = event.target;
+  if (input.id === 'resource-scope') { resourceScope = input.value; inventoryView(); return; }
   if (input.id === 'status') { status = input.value; renderCards(); return; }
   if (!input.matches('[data-stock], [data-fill], [data-part], #owned, #paid')) return;
+  captureProgress();
   const frame = byId.get(frameId);
   const id = input.dataset.stock ?? input.dataset.fill;
   if (id) {
@@ -521,6 +558,17 @@ function changed(event) {
 app.addEventListener('click', event => {
   const button = event.target.closest('button');
   if (!button) return;
+  if (button.dataset.goalAction) {
+    captureProgress();
+    const index = state.goals.indexOf(button.dataset.goalId);
+    if (button.dataset.goalAction === 'remove') state.goals.splice(index, 1);
+    else {
+      const next = index + (button.dataset.goalAction === 'up' ? -1 : 1);
+      if (index >= 0 && next >= 0 && next < state.goals.length) [state.goals[index], state.goals[next]] = [state.goals[next], state.goals[index]];
+    }
+    void save(); catalogView();
+    app.querySelector('[data-goal-id="' + CSS.escape(button.dataset.goalId) + '"]')?.focus();
+  }
   if (button.dataset.frame) openFrame(button.dataset.frame, button);
   if (button.id === 'reset-filters') { group = 'all'; status = 'all'; search = ''; catalogView(); app.querySelector('#search').focus(); }
   if (button.id === 'deficit-filter') { onlyDeficit = !onlyDeficit; button.setAttribute('aria-pressed', onlyDeficit); filterMaterials(); }
@@ -535,6 +583,13 @@ app.addEventListener('input', event => {
 app.addEventListener('change', changed);
 dialog.addEventListener('change', changed);
 dialog.addEventListener('click', event => {
+  if (event.target.id === 'undo-detail') undoProgress();
+  if (event.target.id === 'toggle-goal') {
+    captureProgress();
+    state.goals = state.goals.includes(frameId) ? state.goals.filter(id => id !== frameId) : [...state.goals, frameId];
+    void save(); renderDetail(byId.get(frameId), true);
+    dialog.querySelector('#toggle-goal').focus();
+  }
   const jump = event.target.closest('[data-jump]');
   if (jump) {
     const section = dialog.querySelector('[data-section="' + CSS.escape(jump.dataset.jump) + '"]');
@@ -573,6 +628,7 @@ document.querySelector('#file').addEventListener('change', async event => {
   try {
     const imported = restore(JSON.parse(await file.text()));
     if (confirm(t('importConfirm'))) {
+      captureProgress();
       state = imported;
       const saved = await save();
       renderPage();
