@@ -43,7 +43,7 @@ async function main() {
       nextRequest = Date.now() + 550;
       try {
         const response = await fetch('https://api.warframe.market/v2/orders/item/' + slug + '/top', {
-          headers: { 'User-Agent': 'FrameTracker/1.4.0 personal Warframe collection tracker', Platform: 'pc', Crossplay: 'true' },
+          headers: { 'User-Agent': 'FrameTracker/1.5.0 personal Warframe collection tracker', Platform: 'pc', Crossplay: 'true' },
           signal: AbortSignal.timeout(8500),
         });
         if (response.status === 429 || response.status === 403) {
@@ -75,6 +75,7 @@ async function main() {
     '/': ['index.html', 'text/html'], '/style.css': ['style.css', 'text/css'],
     '/app.js': ['app.js', 'text/javascript'], '/model.js': ['model.js', 'text/javascript'],
     '/i18n.js': ['i18n.js', 'text/javascript'],
+    '/themes.js': ['themes.js', 'text/javascript'], '/orokin.css': ['orokin.css', 'text/css'],
     '/availability.js': ['availability.js', 'text/javascript'],
     '/catalog.json': ['catalog.json', 'application/json'], '/mark.svg': ['mark.svg', 'image/svg+xml'],
   };

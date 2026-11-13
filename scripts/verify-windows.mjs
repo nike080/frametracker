@@ -60,6 +60,11 @@ try {
   const frame = catalog.frames.find(frame => frame.name === 'Equinox Prime');
   assert.equal(await (await fetch(url)).status, 200);
   assert.match(await (await fetch(url + '/i18n.js')).text(), /export function setLanguage/);
+  assert.match(await (await fetch(url)).text(), /id="settings-controls"/);
+  const themeSource = await (await fetch(url + '/themes.js')).text();
+  assert.match(themeSource, /export function resolveTheme/);
+  assert.match(themeSource, /"id": "nightwave"/);
+  assert.match(await (await fetch(url + '/orokin.css')).text(), /prefers-reduced-motion/);
   assert.equal((await get(url)).state, null);
   const state = { frames: { [frame.id]: { done: true, paid: 72, parts: { [frame.recipe.id]: 1 } } }, stock: { credits: 14100 } };
   assert.equal((await put(url, null, state, 'https://example.com')).status, 403);
@@ -83,7 +88,7 @@ try {
   await stop(dev);
   const fallbackDuplicate = launch(original);
   assert.equal((await once(fallbackDuplicate, 'exit'))[0], 0);
-  console.log('Portable Windows smoke test passed: embedded catalog, save, conflict, repeat launch, fallback port, and moved EXE.');
+  console.log('Portable Windows smoke test passed: embedded catalog and faction UI assets, save, conflict, repeat launch, fallback port, and moved EXE.');
 } finally {
   await Promise.all([...children].map(stop));
   const storage = join(profile, 'FrameTracker');

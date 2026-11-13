@@ -16,7 +16,7 @@ try {
   const blob = join(working, 'sea.blob');
   const exe = join(working, 'FrameTracker.exe');
   const assets = Object.fromEntries(
-    ['index.html', 'style.css', 'app.js', 'i18n.js', 'model.js', 'availability.js', 'catalog.json', 'mark.svg'].map(name => [name, resolve(root, 'public', name)])
+    ['index.html', 'style.css', 'orokin.css', 'themes.js', 'app.js', 'i18n.js', 'model.js', 'availability.js', 'catalog.json', 'mark.svg'].map(name => [name, resolve(root, 'public', name)])
   );
   await writeFile(config, JSON.stringify({
     main: resolve(root, 'server.cjs'), output: blob, assets, disableExperimentalSEAWarning: true,

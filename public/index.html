@@ -4,42 +4,65 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
   <title>FrameTracker · Арсенал Тэнно</title>
   <link rel="icon" href="/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/orokin.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
   <header class="top"><div class="wrap top-inner">
-    <a class="brand" href="#catalog"><img src="/mark.svg" alt=""><span>FRAME<span>TRACKER</span><small data-text="brand">АРСЕНАЛ ТЭННО</small></span></a>
-    <nav aria-label="Разделы" data-label="sections">
+    <a class="brand" href="#catalog"><span class="faction-mark" aria-hidden="true"></span><span>FRAME<span>TRACKER</span><small data-text="brand">НАСЛЕДИЕ ОРОКИН</small></span></a>
+    <button id="undo-progress" data-text="undoProgress" disabled>Отменить изменение</button>
+  </div></header>
+  <div class="app-shell">
+    <aside class="sidebar"><nav aria-label="Разделы" data-label="sections">
       <a href="#catalog" data-tab="catalog" data-text="catalog">Каталог</a>
       <a href="#goals" data-tab="goals" data-text="myGoals">Мои цели</a>
       <a href="#inventory" data-tab="inventory" data-text="inventory">Инвентарь</a>
       <a href="#summary" data-tab="summary" data-text="summary">Сводка</a>
+      <a href="#settings" data-tab="settings" data-text="settings">Настройки</a>
     </nav>
-    <div class="top-actions">
-      <button id="undo-progress" data-text="undoProgress" disabled>Отменить изменение</button>
-      <details class="backup"><summary data-text="data">Данные</summary><div>
+    <div class="sidebar-foot"><span id="faction-motto">AD ASTRA, TENNO</span><small data-text="localProgress">Прогресс хранится локально</small></div></aside>
+    <div class="workspace">
+  <p id="save-alert" class="wrap notes save-alert" role="alert" hidden></p>
+  <main class="wrap" id="app"><p class="muted">Загружаем арсенал…</p></main>
+  <div id="settings-controls" hidden>
+    <section class="settings-section"><h2 data-text="appearance">Оформление арсенала</h2>
+      <label class="settings-field"><span data-text="factionPalette">Фракционная палитра</span><select id="theme" aria-describedby="theme-hint"></select></label>
+      <p id="theme-hint" class="small muted" data-text="themeHint">Палитра определяет поверхности, акценты и девиз. Девизы — авторские, по мотивам фракций.</p>
+      <div id="theme-status" class="small muted" role="status"></div>
+    </section>
+    <section class="settings-section"><h2 data-text="onlineData">Онлайн-данные</h2><div id="online-controls"></div>
+      <h3 data-text="marketSource">WARFRAME.MARKET</h3>
+      <div class="settings-actions"><button id="refresh-all" data-text="loadPrices">Загрузить цены</button></div>
+      <p id="market-status" role="status" class="small muted"></p>
+      <div class="settings-actions"><label class="settings-field"><span data-text="selectedFrame">Отдельный Prime</span><select id="price-frame"></select></label><button id="refresh-selected" data-text="checkPrices">Проверить цены</button></div>
+      <p id="frame-price-status" role="status" class="small muted"></p>
+    </section>
+    <section class="settings-section"><h2 data-text="progressAndLanguage">Прогресс и язык</h2>
         <span id="save-status" class="small" role="status"></span>
+        <div class="settings-actions">
         <button id="export" data-text="export">Экспорт прогресса</button>
         <button id="import" data-text="import">Импорт прогресса</button>
+        </div>
         <input id="file" type="file" accept=".json,application/json" hidden>
-      </div></details>
+      <label class="settings-field"><span data-text="language">Язык</span>
       <select id="language" aria-label="Язык" data-label="language">
         <option value="ru" lang="ru">RU</option>
         <option value="en" lang="en">EN</option>
       </select>
-    </div>
-  </div></header>
-  <p id="save-alert" class="wrap notes save-alert" role="alert" hidden></p>
-  <main class="wrap" id="app"><p class="muted">Загружаем арсенал…</p></main>
+      </label>
+    </section>
+  </div>
   <dialog id="detail" aria-labelledby="frame-title"></dialog>
   <div id="notice" role="status" aria-live="polite"></div>
   <footer class="wrap">
     <span>FRAME<span class="accent">TRACKER</span> <span class="muted">/</span> <a id="game-version" href="https://www.warframe.com/en/patch-notes" target="_blank" rel="noreferrer">Warframe</a></span>
     <span><a href="https://github.com/WFCD/warframe-items" target="_blank" rel="noreferrer">WFCD</a> · <a href="https://www.warframe.com/droptables" target="_blank" rel="noreferrer" data-text="dropTables">Таблицы добычи</a> · <a href="https://warframe.market/" target="_blank" rel="noreferrer">Warframe.market</a></span>
   </footer>
+    </div>
+  </div>
 </body>
 </html>
