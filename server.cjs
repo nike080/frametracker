@@ -78,6 +78,7 @@ async function main() {
     '/themes.js': ['themes.js', 'text/javascript'], '/orokin.css': ['orokin.css', 'text/css'],
     '/availability.js': ['availability.js', 'text/javascript'],
     '/catalog.json': ['catalog.json', 'application/json'], '/mark.svg': ['mark.svg', 'image/svg+xml'],
+    '/material-icons.json': ['material-icons.json', 'application/json'],
   };
   function json(res, data, status = 200) {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });

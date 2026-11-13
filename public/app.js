@@ -76,6 +76,10 @@ const { frames, materials, relicLocations, date, gameVersion } = await fetch('/c
   app.textContent = t(pageMessage);
   throw error;
 });
+const materialIcons = await fetch('/material-icons.json').then(response => {
+  if (!response.ok) throw new Error('Material icons unavailable');
+  return response.json();
+}).then(snapshot => snapshot.icons ?? {}).catch(() => ({}));
 document.querySelector('#game-version').textContent = 'Warframe ' + gameVersion;
 const byId = new Map(frames.map(frame => [frame.id, frame]));
 const tradable = frames.filter(frame => frame.market);
@@ -402,7 +406,10 @@ function stockRow(id, target, withInputs, label = '') {
   const gap = known ? Math.max(0, target - stock) : null;
   const labelName = catalogText(item, 'name');
   const name = item.wiki ? link(item.wiki, labelName) : esc(labelName);
-  return '<tr data-resource="' + esc(id) + '" data-needed="' + target + '"><td><span title="' + esc(item.en) + '">' + name + '</span>' +
+  const icon = materialIcons[id]?.image;
+  const iconMarkup = '<span class="material-icon' + (id === 'credits' ? ' material-icon-currency' : '') + '" aria-hidden="true">' +
+    (typeof icon === 'string' && icon.startsWith('data:image/png;base64,') ? '<img data-material-icon src="' + esc(icon) + '" alt="" width="36" height="36" loading="lazy" decoding="async">' : '') + '</span>';
+  return '<tr data-resource="' + esc(id) + '" data-needed="' + target + '"><td><div class="material-label">' + iconMarkup + '<span title="' + esc(item.en) + '">' + name + '</span></div>' +
     (item.drops?.length ? '<details class="small muted"><summary>' + t('whereToFarm') + '</summary>' + item.drops.map(place => '<div>' + esc(place) + '</div>').join('') + '</details>' : '') +
     '</td><td data-column="' + t('needed') + '">' + n(target) + '</td><td data-column="' + t('inStock') + '">' +
     (withInputs ? numberInput('data-stock="' + esc(id) + '" placeholder="' + t('unknownStock') + '"', stock, t('stockLabel') + ' ' + labelName) : known ? n(stock) : t('unknownStock')) +
@@ -764,6 +771,7 @@ dialog.addEventListener('close', () => {
 });
 document.addEventListener('error', event => {
   const img = event.target;
+  if (img.hasAttribute?.('data-material-icon')) img.remove();
   if (img.hasAttribute?.('data-portrait')) {
     img.removeAttribute('data-portrait');
     img.src = '/mark.svg';
