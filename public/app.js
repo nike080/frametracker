@@ -1,6 +1,7 @@
 
 import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory, knownStock, nextAction, restoreProgress } from './model.js';
 import { catalogText, language, setLanguage, t } from './i18n.js';
+import { overframeUrl } from './overframe.js';
 import { themes, resolveTheme, themeTokens } from './themes.js';
 import { frameName, matchesFrame, compareFrames } from './frame-localization.js';
 import { installOutsideDismiss, installMenuOutsideDismiss } from './outside-dismiss.js';
@@ -580,7 +581,7 @@ function renderDetail(frame, keep = false) {
   const progress = collected(frame, state);
   dialog.innerHTML = '<div class="detail-head">' + portrait(frame) + '<div><span class="eyebrow">' +
     (frame.founder ? t('founderExclusive') : frame.prime ? t('primeArchive') : t('tennoArchive')) +
-    '</span><h2 id="frame-title">' + esc(displayFrameName(frame)) + '</h2>' + link(frame.wiki, 'Warframe Wiki') +
+    '</span><h2 id="frame-title">' + esc(displayFrameName(frame)) + '</h2>' + link(frame.wiki, 'Warframe Wiki') + (overframeUrl(frame) ? ' · ' + link(overframeUrl(frame), t('popularBuilds')) : '') +
     '</div><button class="close" aria-label="' + t('close') + '" id="close">×</button></div><div class="detail-body">' +
     '<label class="owned"><input class="check" type="checkbox" id="owned"' + (saved.done ? ' checked' : '') +
     '> <strong>' + t('frameOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +

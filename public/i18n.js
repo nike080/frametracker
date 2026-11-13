@@ -1,4 +1,5 @@
 const messages = {
+  popularBuilds: ['Популярные билды · Overframe', 'Popular builds · Overframe'],
   settings: ['Настройки', 'Settings'],
   appearance: ['Оформление арсенала', 'Arsenal appearance'],
   factionPalette: ['Фракционная палитра', 'Faction palette'],
