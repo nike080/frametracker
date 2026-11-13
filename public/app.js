@@ -1,3 +1,5 @@
+import { homeView } from './home.js';
+import { nextReset, countdown } from './world-state.js';
 
 import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory, knownStock, nextAction, restoreProgress } from './model.js';
 import { catalogText, language, setLanguage, t } from './i18n.js';
@@ -99,7 +101,9 @@ document.querySelector('#game-version').textContent = 'Warframe ' + gameVersion;
 const byId = new Map(frames.map(frame => [frame.id, frame]));
 const tradable = frames.filter(frame => frame.market);
 let state = empty();
-let tab = 'catalog';
+let tab = 'home';
+let worldSnapshot;
+let worldLoading = false;
 let group = 'all';
 let status = 'all';
 let availabilityFilter = 'all';
@@ -302,6 +306,7 @@ async function refreshAvailability(force = false) {
     const expanded = panel.querySelector('details').open;
     panel.outerHTML = availabilityToolbar();
     app.querySelector('.availability-info').open = expanded;
+    if (tab === 'home') renderHome();
     if (tab === 'catalog') renderCards();
   };
   update();
@@ -549,7 +554,8 @@ function renderPage() {
     if (active) anchor.setAttribute('aria-current', 'page');
     else anchor.removeAttribute('aria-current');
   }
-  if (tab === 'inventory') inventoryView();
+  if (tab === 'home') renderHome();
+  else if (tab === 'inventory') inventoryView();
   else if (tab === 'goals') app.innerHTML = intro(t('personalArchive'), t('myGoals'), t('goalsPageHint')) + goalsView() + assistantView();
   else if (tab === 'summary') summaryView();
   else if (tab === 'settings') settingsView();
@@ -697,7 +703,8 @@ async function refreshMarket() {
 }
 function route() {
   const value = location.hash.slice(1);
-  tab = ['inventory', 'summary', 'goals', 'settings'].includes(value) ? value : 'catalog';
+  tab = ['home', 'catalog', 'inventory', 'summary', 'goals', 'settings'].includes(value) ? value : 'home';
+  if (tab === 'home') void refreshWorld();
   renderPage();
 }
 function changed(event) {
@@ -876,3 +883,37 @@ fetch('/api/prices').then(response => response.json()).then(saved => {
   quotes = { ...saved, ...quotes };
   if (tab === 'summary' && !batch) summaryView();
 }).catch(() => {});
+
+function renderHome() {
+ const refreshFocused = document.activeElement?.id === 'refresh-world';
+ app.innerHTML = homeView({language, frames, state, collected, availability: liveAvailability, name: displayFrameName}).render(worldSnapshot, worldLoading);
+ if (refreshFocused) app.querySelector('#refresh-world').focus({preventScroll:true});
+ app.querySelector('#refresh-world').onclick = () => { void refreshWorld(); void refreshAvailability(); };
+}
+async function refreshWorld() {
+ if (worldLoading) return;
+ worldLoading = true;
+ const requestedLanguage = language;
+ if (tab === 'home') renderHome();
+ try {
+  const response = await fetch('/api/world-state?language=' + requestedLanguage);
+  if (!response.ok) throw new Error('World unavailable');
+  const snapshot = await response.json();
+  if (requestedLanguage === language) worldSnapshot = snapshot;
+ } catch { worldSnapshot = {...worldSnapshot, stale:true}; }
+ finally { worldLoading = false; if (tab === 'home') renderHome(); }
+ if (requestedLanguage !== language) void refreshWorld();
+}
+setInterval(() => { if (!document.hidden && tab === 'home') void refreshWorld(); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && tab === 'home') void refreshWorld(); });
+setInterval(() => {
+ if (tab !== 'home' || document.hidden) return;
+ for (const el of app.querySelectorAll('[data-world-expiry]')) el.textContent = countdown(el.dataset.worldExpiry);
+ for (const el of app.querySelectorAll('[data-world-event]')) if (Date.parse(el.dataset.worldEvent) <= Date.now()) {
+  el.classList.add('event-expired'); el.title = language === 'en' ? 'Expired · awaiting update' : 'Завершено · ожидаем обновление';
+  for (const label of el.querySelectorAll('[data-expiry-label]')) label.textContent = el.title;
+ }
+ const reset = nextReset();
+ const clock = app.querySelector('[data-reset-timer]'); if (clock) clock.textContent = countdown(reset);
+ const local = app.querySelector('[data-reset-local]'); if (local) local.textContent = new Date(reset).toLocaleString(locale());
+}, 1000);
