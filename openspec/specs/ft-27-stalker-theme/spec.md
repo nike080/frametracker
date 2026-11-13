@@ -1,5 +1,8 @@
 # ft-27-stalker-theme
 
+## Purpose
+Offer the Stalker dark faction identity as the default appearance while preserving saved palette preferences.
+
 ## Requirements
 
 ### Requirement: FT-27: тёмная тема Сталкер по умолчанию

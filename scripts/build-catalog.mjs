@@ -48,6 +48,7 @@ const partsRu = {
   'Day Aspect': 'Дневной аспект', 'Night Aspect': 'Ночной аспект',
 };
 const credits = 'credits';
+const { names: officialMaterialNames } = JSON.parse(await readFile(new URL('./material-names.json', import.meta.url)));
 const materialNames = {
   'Alloy Plate':'Сплавы', 'Orokin Cell':'Элемент Орокин', 'Polymer Bundle':'Полимеры',
   'Rubedo':'Рубедо', 'Ferrite':'Феррит', 'Salvage':'Вторсырьё', 'Plastids':'Пластиды',
@@ -87,7 +88,7 @@ function material(id, count) {
   const parent = item?.parentUniqueNames?.at(-1);
   const owner = id.includes('/WarframeRecipes/') ? items.get(parent) : undefined;
   const en = [owner?.name, item?.name ?? id.split('/').at(-1)].filter(Boolean).join(' ');
-  materials[id] = { name: materialNames[en] ?? en, en, wiki: 'https://wiki.warframe.com/w/' + encodeURIComponent(en.replaceAll(' ', '_')),
+  materials[id] = { name: officialMaterialNames[id] ?? materialNames[en] ?? en, en, wiki: 'https://wiki.warframe.com/w/' + encodeURIComponent(en.replaceAll(' ', '_')),
     drops: [...new Set((item?.drops ?? []).map(drop => drop.location))].slice(0, 8) };
   return { id, count };
 }

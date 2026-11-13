@@ -67,7 +67,7 @@ try {
   assert.match(await (await fetch(url + '/app.js')).text(), /popularBuilds/);
   assert.match(themeSource, /"id": "nightwave"/);
   assert.match(await (await fetch(url + '/orokin.css')).text(), /prefers-reduced-motion/);
-  for (const name of ['relic-icons.json', 'overframe.js', 'material-icons.json', 'frame-names.js', 'frame-localization.js', 'outside-dismiss.js']) {
+  for (const name of ['catalog.json', 'app.js', 'style.css', 'i18n.js', 'relic-icons.json', 'overframe.js', 'material-icons.json', 'frame-names.js', 'frame-localization.js', 'outside-dismiss.js']) {
     const response = await fetch(url + '/' + name);
     assert.equal(response.status, 200, name + ' is embedded');
     assert.deepEqual(Buffer.from(await response.arrayBuffer()), await readFile(join(root, 'public', name)), name + ' matches release source');
@@ -98,7 +98,7 @@ try {
   await stop(dev);
   const fallbackDuplicate = launch(original);
   assert.equal((await once(fallbackDuplicate, 'exit'))[0], 0);
-  console.log('Portable Windows smoke test passed: FT-20/21/24/27 embedded assets, catalog and faction UI, save, conflict, repeat launch, fallback port, and moved EXE.');
+  console.log('Portable Windows smoke test passed: 1.8.0 inventory and localized embedded assets, catalog and faction UI, save, conflict, repeat launch, fallback port, and moved EXE.');
 } finally {
   await Promise.all([...children].map(stop));
   const storage = join(profile, 'FrameTracker');

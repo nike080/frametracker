@@ -1,5 +1,8 @@
 # ft-20-relic-icons
 
+## Purpose
+Provide recognizable local icons for Lith, Meso, Neo and Axi relics without requiring image downloads at runtime.
+
 ## Requirements
 
 ### Requirement: FT-20: иконки реликвий

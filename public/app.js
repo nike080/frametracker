@@ -444,11 +444,33 @@ function combined(scope = 'all') {
   return Object.keys(materials).map(id => ({ id, count: totals.get(id) ?? 0 })).sort((a, b) =>
     Number(b.count > 0) - Number(a.count > 0) || catalogText(materials[a.id], 'name').localeCompare(catalogText(materials[b.id], 'name'), locale()));
 }
+function resourceCard({id, count}) {
+  const item = materials[id], name = catalogText(item, 'name');
+  const known = knownStock(state, id), stock = known ? state.stock[id] : 0;
+  const icon = materialIcons[id]?.image;
+  return '<article class="inventory-card" data-resource="' + esc(id) + '" data-needed="' + count + '">' +
+    '<div class="resource-art" aria-hidden="true">' + (typeof icon === 'string' && icon.startsWith('data:image/png;base64,') ? '<img data-material-icon src="' + esc(icon) + '" alt="" loading="lazy">' : '') + '</div><h2>' + (item.wiki ? link(item.wiki, name) : esc(name)) + '</h2>' +
+    '<div class="resource-stats"><div><span>' + t('inStock') + '</span><button class="link-button resource-stock" data-edit-stock title="' + t('editStock') + '">' + (known ? n(stock) : t('unknownStock')) + '</button></div><div><span>' + t('needed') + '</span><strong>' + n(count) + '</strong></div><div><span>' + t('shortfall') + '</span><strong class="' + (!known || stock < count ? 'gold' : 'accent') + '">' + (known ? n(Math.max(0,count-stock)) : '—') + '</strong></div></div>' +
+    '<form class="stock-editor" hidden><input class="stock" type="number" min="0" max="999999999" step="1" value="' + (known ? stock : '') + '" aria-label="' + esc(t('stockLabel') + ' ' + name) + '"><button>' + t('applyStock') + '</button><button type="button" data-cancel-stock>' + t('cancelStock') + '</button></form>' +
+    '<div class="resource-steps">' + [1,10,100,1000,-1,-10,-100,-1000].map(delta => '<button data-stock-delta="' + delta + '" aria-label="' + esc(name + ': ' + (delta>0 ? '+' : '−') + n(Math.abs(delta))) + '">' + (delta>0 ? '+' : '−') + Math.abs(delta) + '</button>').join('') + '</div>' +
+    '<form class="resource-custom"><input class="stock" type="number" min="1" max="999999999" step="1" required placeholder="' + t('customStock') + '" aria-label="' + esc(t('customStock') + ': ' + name) + '"><button value="1">' + t('addStock') + '</button><button value="-1">' + t('removeStock') + '</button></form></article>';
+}
+function updateInventoryStock(card, value, focusSelector) {
+  const id = card.dataset.resource, count = Number(card.dataset.needed);
+  captureProgress();
+  if (value === null) delete state.stock[id];
+  else state.stock[id] = Math.max(0, Math.min(999999999, value));
+  recordChange('stock', scopedFrames(frames,state,'goals')[0]); void save();
+  card.outerHTML = resourceCard({id,count}); filterMaterials();
+  const updated = app.querySelector('[data-resource="' + CSS.escape(id) + '"]');
+  if (!updated.hidden) updated.querySelector(focusSelector)?.focus({preventScroll:true});
+  else app.querySelector('#deficit-filter').focus({preventScroll:true});
+}
 function inventoryView() {
   app.innerHTML = intro(t('resourcesSection'), t('inventory'), t('inventoryDescription')) +
     '<div class="toolbar"><label>' + t('resourceScope') + ' <select id="resource-scope"><option value="goals">' + t('myGoals') + '</option><option value="all">' + t('entireCollection') + '</option></select></label><label class="search"><input type="search" id="material-search" placeholder="' + t('materialSearch') + '" aria-label="' + t('materialSearch') + '" value="' + esc(materialSearch) + '"></label><button id="deficit-filter" aria-pressed="' + onlyDeficit + '">' + t('onlyDeficit') + '</button><button id="reset-materials">' + t('resetFilters') + '</button></div>' +
     (resourceScope === 'goals' && !state.goals.length ? '<p class="notes">' + t('noGoals') + ' <a href="#catalog">' + t('catalog') + '</a></p>' : '') +
-    '<p id="material-count" class="small muted" aria-live="polite"></p>' + (resourceScope === 'goals' && !state.goals.length ? '' : resourceTable(combined(resourceScope).filter(row => resourceScope === 'all' || row.count > 0), true));
+    '<p id="material-count" class="small muted" aria-live="polite"></p>' + (resourceScope === 'goals' && !state.goals.length ? '' : '<div class="inventory-grid">' + combined(resourceScope).filter(row => resourceScope === 'all' || row.count > 0).map(resourceCard).join('') + '</div>');
   app.querySelector('#resource-scope').value = resourceScope;
   filterMaterials();
 }
@@ -738,6 +760,18 @@ function changed(event) {
 app.addEventListener('click', event => {
   const button = event.target.closest('button');
   if (!button) return;
+  if (button.hasAttribute('data-edit-stock')) {
+    const card=button.closest('[data-resource]'); card.querySelector('.stock-editor').hidden=false; button.hidden=true;
+    const input=card.querySelector('.stock-editor input'); input.focus(); input.select(); return;
+  }
+  if (button.hasAttribute('data-cancel-stock')) {
+    const card=button.closest('[data-resource]'); card.querySelector('.stock-editor').hidden=true;
+    const trigger=card.querySelector('[data-edit-stock]'); trigger.hidden=false; trigger.focus(); return;
+  }
+  if (button.hasAttribute('data-stock-delta')) {
+    const card=button.closest('[data-resource]'), id=card.dataset.resource;
+    updateInventoryStock(card,(knownStock(state,id)?state.stock[id]:0)+Number(button.dataset.stockDelta),'[data-stock-delta="'+button.dataset.stockDelta+'"]'); return;
+  }
   if (button.dataset.goalAction) {
     captureProgress();
     const index = state.goals.indexOf(button.dataset.goalId);
@@ -765,6 +799,19 @@ app.addEventListener('click', event => {
 app.addEventListener('input', event => {
   if (event.target.id === 'material-search') { materialSearch = event.target.value; filterMaterials(); }
   if (event.target.id === 'search') { search = event.target.value; renderCards(); }
+});
+app.addEventListener('submit', event => {
+  const form=event.target;
+  if (!form.matches('.stock-editor, .resource-custom')) return;
+  event.preventDefault(); if (!form.reportValidity()) return;
+  const value=Number(form.querySelector('input').value); if (!Number.isSafeInteger(value)) return;
+  const card=form.closest('[data-resource]'), id=card.dataset.resource, custom=form.matches('.resource-custom');
+  updateInventoryStock(card,custom?(knownStock(state,id)?state.stock[id]:0)+value*Number(event.submitter?.value||1):form.querySelector('input').value === '' ? null : value,custom?'.resource-custom input':'[data-edit-stock]');
+});
+app.addEventListener('keydown', event => {
+  if(event.key==='Escape' && event.target.closest('.stock-editor')) {
+    event.preventDefault(); event.target.closest('.stock-editor').querySelector('[data-cancel-stock]').click();
+  }
 });
 app.addEventListener('change', changed);
 dialog.addEventListener('change', changed);
