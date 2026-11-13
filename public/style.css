@@ -49,3 +49,9 @@ dialog{height:91dvh;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:
 @media(max-width:730px){.catalog-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px}.catalog-toolbar .search{grid-column:1/-1}.catalog-toolbar .segments{grid-column:1/-1}.catalog-toolbar #reset-filters{grid-column:2}.top nav{gap:16px;justify-content:space-between}.top nav a{font-size:.78rem}.catalog-toolbar .filter-field{font-size:.72rem}}
 @media(max-width:420px){.catalog-toolbar{grid-template-columns:minmax(0,1fr)}.catalog-toolbar #reset-filters{grid-column:1}.catalog-toolbar .segments button{flex:1}.top nav{gap:10px}}
 .catalog-toolbar .filter-field select{flex:0 0 auto;height:44px}
+.material-label{display:flex;align-items:center;gap:10px;min-width:0}
+.material-label>span:last-child{min-width:0;overflow-wrap:anywhere}
+.material-icon{display:inline-flex;position:relative;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;border-radius:6px;background:var(--wash);isolation:isolate}
+.material-icon::before{content:'';position:absolute;width:12px;height:12px;border:1px solid var(--muted);border-radius:3px;transform:rotate(45deg);z-index:-1}
+.material-icon img{display:block;width:36px;height:36px;object-fit:contain;background:var(--panel);border-radius:6px}
+.material-icon-currency img{background:#26313d}

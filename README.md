@@ -125,6 +125,8 @@ The snapshot records the game version, update date, and official recipe manifest
 
 Requirements and implementation notes are kept in `openspec/`.
 
+Material icons are bundled for offline use. After refreshing the catalog, run `node scripts/update-material-icons.mjs` to update their official Public Export snapshot, then run `npm test`. Per-image source URLs and manifest IDs are stored in `public/material-icons.json`; details are in [appearance assets](docs/appearance-assets.md).
+
 ## Data sources and credits
 
 - [Digital Extremes Public Export](https://origin.warframe.com/PublicExport/index_en.txt.lzma) for official recipe data.
