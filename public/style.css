@@ -55,3 +55,5 @@ dialog{height:91dvh;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:
 .material-icon::before{content:'';position:absolute;width:12px;height:12px;border:1px solid var(--muted);border-radius:3px;transform:rotate(45deg);z-index:-1}
 .material-icon img{display:block;width:36px;height:36px;object-fit:contain;background:var(--panel);border-radius:6px}
 .material-icon-currency img{background:#26313d}
+
+.relic-icon{display:inline-flex;vertical-align:middle;margin-right:8px;flex-shrink:0}
