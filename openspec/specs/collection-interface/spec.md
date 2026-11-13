@@ -3,6 +3,20 @@
 ## Purpose
 TBD - created by archiving change ui-overhaul. Update Purpose after archive.
 ## Requirements
+### Requirement: Focused catalog and dedicated goals page
+The catalog SHALL group search, frame type, collection status, Prime availability and sorting in one filter panel. Explanations, timestamps and refresh for relic data SHALL be available in a collapsed disclosure with a visible freshness indicator. Goals and next collection actions SHALL live on a dedicated goals route linked from primary navigation. Catalog filters SHALL survive navigation between pages and resetting SHALL clear all catalog filters.
+
+#### Scenario: Continue a goal without catalog clutter
+- **WHEN** a user navigates to My goals
+- **THEN** priorities, next actions and result recording are available there, and the catalog shows filters and results without those planning sections
+
+### Requirement: Stable frame panel and direct component status
+The frame dialog SHALL keep a viewport-relative height with internal scrolling when recipes or sources expand. Component status controls SHALL remain visible outside recipe disclosures. Recipes SHALL start collapsed on opening a frame and retain their expanded state during progress edits. Recording a crafted component SHALL preserve existing undo behavior and SHALL NOT consume stock automatically.
+
+#### Scenario: Record a crafted component
+- **WHEN** a user opens a frame and records an already crafted chassis
+- **THEN** no recipe expansion is required, the panel keeps its size, and the status control retains focus after the update
+
 ### Requirement: Working catalog hierarchy
 The interface SHALL expose collection progress, search, type and status filters before the results grid without a large decorative hero preceding these controls.
 
