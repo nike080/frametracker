@@ -53,6 +53,14 @@ The portable app stores progress and cached prices in `%LOCALAPPDATA%\FrameTrack
 
 ## Your progress
 
+### Personal goals
+
+Open a Warframe and select **Collect next** to add it to **My goals** in the catalog. Reorder or remove goals there; completed goals stay visible until removed. Ordering does not reserve resources.
+
+Inventory opens in **My goals** mode, showing combined requirements for selected frames and subtracting shared stock once. Switch to **Entire collection** for the original overview. Existing saves start with no goals; goals are included in new exports and imports.
+
+**Undo change** restores the state before the latest progress change, including a goal edit or import. One undo is available during the current session; reloading clears undo history. Resource stock remains manual: marking a component crafted does not deduct materials automatically.
+
 When running from source, progress is saved in your browser for the current app address. Use **Data → Export progress** to make a JSON backup and **Import progress** to restore it or move it to another browser or computer.
 
 The portable build stores progress in your Windows profile. Existing browser progress is migrated automatically when you first open the portable app at the same address in the same browser profile. If the browser or port changes, export progress from the old instance and import it into the new one. The Data menu shows the save status.
