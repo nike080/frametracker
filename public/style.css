@@ -82,3 +82,9 @@ dialog{height:91dvh;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:
 
 @media(min-width:1600px){.collection-progress-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(min-width:581px) and (max-width:900px){.collection-progress-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.inventory-card[hidden]{display:none}.relic-contents{min-width:0}.relic-contents summary{cursor:pointer;line-height:1.5;padding:8px 0}.relic-rewards-scroll{overflow-x:auto;max-width:100%}.relic-rewards{font-size:12px;width:100%;border-collapse:collapse}.relic-rewards th,.relic-rewards td{padding:8px;text-align:left;border-bottom:1px solid var(--edge)}.relic-rewards td{white-space:nowrap;font-variant-numeric:tabular-nums}.relic-rewards th[scope=row]{min-width:150px}
+
+.relic-grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}.relic-grid .inventory-card{min-width:0}.relic-stock-row{display:grid;grid-template-columns:minmax(0,1fr) 80px auto;gap:8px;align-items:center;margin:8px 0}.relic-locations{margin-top:12px}.relic-locations summary{cursor:pointer}.relic-locations li{margin:10px 0;overflow-wrap:anywhere}.relic-rewards{table-layout:fixed}.relic-rewards th:first-child{width:34%}.relic-rewards th,.relic-rewards td{padding:7px 3px;overflow-wrap:anywhere}.relic-rewards th[scope=row]{min-width:0}.relic-rewards th{font-size:11px}.relic-rewards td{white-space:normal}.relic-rewards-scroll{overflow-x:visible}@media(max-width:1200px){.relic-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:950px){.relic-grid{grid-template-columns:minmax(0,1fr)}}
+
+.relic-stock-row{grid-template-columns:minmax(0,1fr) 64px auto;font-size:12px}.relic-stock-row .stock{width:100%;min-width:0;max-width:64px;box-sizing:border-box}.relic-stock-row button{font-size:12px;padding:7px;white-space:nowrap}
