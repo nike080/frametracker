@@ -18,7 +18,7 @@ const curl = process.platform === 'win32' ? 'curl.exe' : 'curl';
 const catalogBase = 'https://raw.githubusercontent.com/WFCD/warframe-items/master/data/json/';
 const dropsBase = 'https://raw.githubusercontent.com/WFCD/warframe-drop-data/gh-pages/data/';
 const indexUrl = 'https://origin.warframe.com/PublicExport/index_en.txt.lzma';
-const userAgent = 'FrameTracker/1.2.0 personal Warframe collection tracker';
+const userAgent = 'FrameTracker/1.3.0 personal Warframe collection tracker';
 async function download(url, filename) {
   await exec(curl, ['--fail', '--silent', '--show-error', '--location', '--retry', '2',
     '--max-time', '50', '--user-agent', userAgent, '--output', fileURLToPath(new URL(filename, working)), url]);
