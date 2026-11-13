@@ -125,6 +125,8 @@ The snapshot records the game version, update date, and official recipe manifest
 
 Requirements and implementation notes are kept in `openspec/`.
 
+Click the dimmed area outside a frame card to close it. Interior clicks, scrolling and drags from inside the card do not dismiss it; Escape and the close button also work. Closing returns focus to the frame and preserves filters and progress. An outside click on an open dropdown only dismisses that menu; a second click can activate the control beneath it.
+
 Frame names use official Russian Public Export names in RU and English catalog names in EN. Search accepts both languages, ignores case and treats е/ё alike. Alphabetical lists follow the selected language; manual goal priorities are preserved. Names work offline. After updating the catalog, run `node scripts/update-frame-names.mjs` and `npm test`; source provenance is recorded in `public/frame-names.js`.
 
 Material icons are bundled for offline use. After refreshing the catalog, run `node scripts/update-material-icons.mjs` to update their official Public Export snapshot, then run `npm test`. Per-image source URLs and manifest IDs are stored in `public/material-icons.json`; details are in [appearance assets](docs/appearance-assets.md).

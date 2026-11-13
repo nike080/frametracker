@@ -3,11 +3,14 @@ import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGo
 import { catalogText, language, setLanguage, t } from './i18n.js';
 import { themes, resolveTheme, themeTokens } from './themes.js';
 import { frameName, matchesFrame, compareFrames } from './frame-localization.js';
+import { installOutsideDismiss, installMenuOutsideDismiss } from './outside-dismiss.js';
 const displayFrameName = frame => frameName(frame, language);
 const frameOrder = (a, b) => compareFrames(a, b, language);
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#detail');
+installOutsideDismiss(dialog);
+installMenuOutsideDismiss(document);
 const key = 'frametracker:v1';
 const locale = () => language === 'en' ? 'en-US' : 'ru-RU';
 let number;
