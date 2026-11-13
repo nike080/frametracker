@@ -1,5 +1,6 @@
 // Curated faction palettes and original thematic mottos; not official color standards.
 export const themes = [
+  {id:'stalker', name:'Сталкер', en:'Stalker', motto:'ТВОИ ДЕЯНИЯ НЕ ЗАБЫТЫ', mottoEn:'YOUR ACTIONS ARE NOT FORGOTTEN', dark:true, accent:'#ef858d', background:'#100e12'},
   {
     "id": "orokin",
     "name": "Наследие Орокин",

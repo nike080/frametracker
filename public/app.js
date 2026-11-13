@@ -1,6 +1,7 @@
 
 import { empty, amount, flatten, entry, collected, demand, estimate, normalizeGoals, scopedFrames, progressHistory, knownStock, nextAction, restoreProgress } from './model.js';
 import { catalogText, language, setLanguage, t } from './i18n.js';
+import { overframeUrl } from './overframe.js';
 import { themes, resolveTheme, themeTokens } from './themes.js';
 import { frameName, matchesFrame, compareFrames } from './frame-localization.js';
 import { installOutsideDismiss, installMenuOutsideDismiss } from './outside-dismiss.js';
@@ -23,7 +24,7 @@ const numberInput = (attr, value, label) => '<input class="stock" type="number" 
 const languageSelect = document.querySelector('#language');
 const settingsControls = document.querySelector('#settings-controls');
 const themeSelect = document.querySelector('#theme');
-let themeId = 'orokin';
+let themeId = 'stalker';
 let themeSaveFailed = false;
 try { themeId = resolveTheme(localStorage.getItem('frametracker:theme')).id; } catch { /* Session appearance remains available. */ }
 function applyTheme() {
@@ -89,6 +90,11 @@ const materialIcons = await fetch('/material-icons.json').then(response => {
   if (!response.ok) throw new Error('Material icons unavailable');
   return response.json();
 }).then(snapshot => snapshot.icons ?? {}).catch(() => ({}));
+const relicIcons = await fetch('/relic-icons.json').then(response => response.ok ? response.json() : {}).then(snapshot => snapshot.icons ?? {}).catch(() => ({}));
+function relicIcon(name) {
+  const icon = relicIcons[String(name).split(' ')[0]]?.image;
+  return '<span class="material-icon relic-icon" aria-hidden="true">' + (typeof icon === 'string' && icon.startsWith('data:image/png;base64,') ? '<img data-material-icon src="' + esc(icon) + '" alt="" width="36" height="36" loading="lazy" decoding="async">' : '') + '</span>';
+}
 document.querySelector('#game-version').textContent = 'Warframe ' + gameVersion;
 const byId = new Map(frames.map(frame => [frame.id, frame]));
 const tradable = frames.filter(frame => frame.market);
@@ -278,11 +284,11 @@ function availabilityDetails(frame) {
   if (!frame.prime || frame.founder) return '';
   const row = liveAvailability.frames[frame.id];
   return '<section class="availability-panel"><h3>' + t('primeAvailability') + '</h3>' + availabilityBadge(frame) +
-    '<p class="small muted">' + t(liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') + ' ' + t('vaultExplanation') + '</p>' +
+    '<details class="availability-info"><summary>' + t('availabilityData') + ' · ' + t(liveAvailability.stale ? 'stale' : 'availabilityCurrent') + '</summary><p class="small muted">' + t(liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') + ' ' + t('vaultExplanation') + '</p></details>' +
     (row ? row.parts.map(part => {
       const node = flatten(frame.recipe).find(node => node.id === part.id);
       return '<details><summary>' + esc(catalogText(node, 'name')) + ' · ' + t('partAvailability_' + part.status) + '</summary>' +
-        (part.relics.length ? '<ul>' + part.relics.map(relic => '<li><strong>' + esc(relic.name) + '</strong> · ' + t(relic.channel === 'resurgence' ? 'resurgenceAya' : 'regularRelic') +
+        (part.relics.length ? '<ul>' + part.relics.map(relic => '<li>' + relicIcon(relic.name) + '<strong>' + esc(relic.name) + '</strong> · ' + t(relic.channel === 'resurgence' ? 'resurgenceAya' : 'regularRelic') +
           (relic.locations.length ? '<ul>' + relic.locations.map(where => '<li>' + esc(where) + '</li>').join('') + '</ul>' : '') + '</li>').join('') + '</ul>' : '<p>' + t(part.status === 'vaulted' ? 'noNewRelics' : 'availabilityStale') + '</p>') + '</details>';
     }).join('') : '<p>' + t('availabilityStale') + '</p>') + '</section>';
 }
@@ -316,11 +322,11 @@ function sourceView(frame, action) {
   const drops = action.id ? item?.drops ?? [] : node?.drops ?? [];
   const relics = action.id ? [] : node?.relics ?? [];
   const rows = drops.map(drop => '<li>' + esc(typeof drop === 'string' ? drop : catalogText(drop, 'where')) + '</li>');
-  for (const relic of relics) rows.push('<li>' + esc(relic.name) + ': ' +
+  for (const relic of relics) rows.push('<li>' + relicIcon(relic.name) + esc(relic.name) + ': ' +
     (relicLocations[relic.name]?.map(place => esc(place.where)).join('; ') || t('sourceUnknown')) + '</li>');
   return '<details class="source-help"><summary>' + t('sourceHelp') + '</summary><p>' + t('sourceCaution') + '</p>' +
     (rows.length ? '<ul>' + rows.join('') + '</ul>' : '<p>' + t('sourceUnknown') + '</p>') +
-    '<p>' + t('sourceSnapshot', { date: esc(date) }) + ' · ' + link(item?.wiki || frame.wiki, 'Warframe Wiki') + ' · ' +
+    '<p class="source-metadata">' + t('sourceSnapshot', { date: esc(date) }) + ' · ' + link(item?.wiki || frame.wiki, 'Warframe Wiki') + ' · ' +
     link('https://github.com/WFCD/warframe-items', 'WFCD') + '</p></details>';
 }
 function assistantView() {
@@ -538,7 +544,7 @@ function dropList(part, frame) {
     '<li>' + esc(catalogText(drop, 'where')) + (Number.isFinite(drop.chance) ? ' · ' + n(drop.chance) + '%' : '') + '</li>').join('') + '</ul>' : '';
   const relics = part.relics?.length ? '<h4>' + t('relics') + '</h4><p class="small muted">' + t('relicOdds') + '</p>' + part.relics.map(relic => {
     const places = relicLocations[relic.name];
-    return '<details class="relic"><summary>' + esc(relic.name) + ' <small>' + n(relic.chance) +
+    return '<details class="relic"><summary>' + relicIcon(relic.name) + esc(relic.name) + ' <small>' + n(relic.chance) +
       '% · ' + (places ? t('relicInMissions') : t('relicNoMission')) + '</small></summary>' +
       (places ? '<ul>' + places.map(place => '<li>' + esc(place.where) + ' · ' + n(place.chance) + '%</li>').join('') + '</ul>' :
         '<p class="muted">' + t('relicAlternatives') + '</p>') +
@@ -575,7 +581,7 @@ function renderDetail(frame, keep = false) {
   const progress = collected(frame, state);
   dialog.innerHTML = '<div class="detail-head">' + portrait(frame) + '<div><span class="eyebrow">' +
     (frame.founder ? t('founderExclusive') : frame.prime ? t('primeArchive') : t('tennoArchive')) +
-    '</span><h2 id="frame-title">' + esc(displayFrameName(frame)) + '</h2>' + link(frame.wiki, 'Warframe Wiki') +
+    '</span><h2 id="frame-title">' + esc(displayFrameName(frame)) + '</h2>' + link(frame.wiki, 'Warframe Wiki') + (overframeUrl(frame) ? ' · ' + link(overframeUrl(frame), t('popularBuilds')) : '') +
     '</div><button class="close" aria-label="' + t('close') + '" id="close">×</button></div><div class="detail-body">' +
     '<label class="owned"><input class="check" type="checkbox" id="owned"' + (saved.done ? ' checked' : '') +
     '> <strong>' + t('frameOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +
