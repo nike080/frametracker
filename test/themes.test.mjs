@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { themes, resolveTheme, themeTokens } from '../public/themes.js';
 
 test('faction preferences accept stable ids and reject invalid or legacy indexes', () => {
-  assert.equal(themes.length, 23);
-  assert.equal(new Set(themes.map(theme => theme.id)).size, 23);
+  assert.equal(themes.length, 24);
+  assert.equal(new Set(themes.map(theme => theme.id)).size, 24);
   for (const input of [undefined, null, '', 3, -1, NaN, {}, '999', 'unknown']) {
-    assert.equal(resolveTheme(input).id, 'orokin');
+    assert.equal(resolveTheme(input).id, 'stalker');
   }
   for (const theme of themes) {
     assert.equal(resolveTheme(theme.id), theme);
