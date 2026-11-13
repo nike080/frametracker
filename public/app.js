@@ -283,7 +283,7 @@ function availabilityDetails(frame) {
   if (!frame.prime || frame.founder) return '';
   const row = liveAvailability.frames[frame.id];
   return '<section class="availability-panel"><h3>' + t('primeAvailability') + '</h3>' + availabilityBadge(frame) +
-    '<p class="small muted">' + t(liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') + ' ' + t('vaultExplanation') + '</p>' +
+    '<details class="availability-info"><summary>' + t('availabilityData') + ' · ' + t(liveAvailability.stale ? 'stale' : 'availabilityCurrent') + '</summary><p class="small muted">' + t(liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') + ' ' + t('vaultExplanation') + '</p></details>' +
     (row ? row.parts.map(part => {
       const node = flatten(frame.recipe).find(node => node.id === part.id);
       return '<details><summary>' + esc(catalogText(node, 'name')) + ' · ' + t('partAvailability_' + part.status) + '</summary>' +
@@ -325,7 +325,7 @@ function sourceView(frame, action) {
     (relicLocations[relic.name]?.map(place => esc(place.where)).join('; ') || t('sourceUnknown')) + '</li>');
   return '<details class="source-help"><summary>' + t('sourceHelp') + '</summary><p>' + t('sourceCaution') + '</p>' +
     (rows.length ? '<ul>' + rows.join('') + '</ul>' : '<p>' + t('sourceUnknown') + '</p>') +
-    '<p>' + t('sourceSnapshot', { date: esc(date) }) + ' · ' + link(item?.wiki || frame.wiki, 'Warframe Wiki') + ' · ' +
+    '<p class="source-metadata">' + t('sourceSnapshot', { date: esc(date) }) + ' · ' + link(item?.wiki || frame.wiki, 'Warframe Wiki') + ' · ' +
     link('https://github.com/WFCD/warframe-items', 'WFCD') + '</p></details>';
 }
 function assistantView() {

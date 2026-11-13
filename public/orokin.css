@@ -23,3 +23,8 @@ dialog{background:var(--bg);color:var(--ink);border:1px solid var(--edge);box-sh
 .prime .portrait-badge{color:var(--gold)}
 .card:has(.prime):hover{border-color:var(--mint)}
 @media(min-width:731px){.sidebar{position:sticky;top:0;align-self:start;height:calc(100dvh - 83px);min-height:460px}}
+
+/* Secondary catalog provenance remains readable and expandable. */
+.catalog-version,.availability-info,.source-metadata,footer{font-size:.75rem;line-height:1.5}
+.availability-info summary,.source-help summary{font-size:.78rem;font-weight:400;color:var(--muted)}
+.source-metadata{color:var(--muted);margin-top:12px}
