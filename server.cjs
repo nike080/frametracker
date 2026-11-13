@@ -79,6 +79,8 @@ async function main() {
     '/availability.js': ['availability.js', 'text/javascript'],
     '/catalog.json': ['catalog.json', 'application/json'], '/mark.svg': ['mark.svg', 'image/svg+xml'],
     '/material-icons.json': ['material-icons.json', 'application/json'],
+    '/frame-names.js': ['frame-names.js', 'text/javascript'],
+    '/frame-localization.js': ['frame-localization.js', 'text/javascript'],
   };
   function json(res, data, status = 200) {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });

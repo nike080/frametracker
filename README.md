@@ -125,6 +125,8 @@ The snapshot records the game version, update date, and official recipe manifest
 
 Requirements and implementation notes are kept in `openspec/`.
 
+Frame names use official Russian Public Export names in RU and English catalog names in EN. Search accepts both languages, ignores case and treats е/ё alike. Alphabetical lists follow the selected language; manual goal priorities are preserved. Names work offline. After updating the catalog, run `node scripts/update-frame-names.mjs` and `npm test`; source provenance is recorded in `public/frame-names.js`.
+
 Material icons are bundled for offline use. After refreshing the catalog, run `node scripts/update-material-icons.mjs` to update their official Public Export snapshot, then run `npm test`. Per-image source URLs and manifest IDs are stored in `public/material-icons.json`; details are in [appearance assets](docs/appearance-assets.md).
 
 ## Data sources and credits
