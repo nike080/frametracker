@@ -53,6 +53,14 @@ The portable app stores progress and cached prices in `%LOCALAPPDATA%\FrameTrack
 
 ## Your progress
 
+### Live Prime availability
+
+Prime cards show whether all, some, or none of their parts have relics in the current rotation, including the main blueprint. Use **Show** to filter availability or Prime Resurgence, and **Order** to put available Primes first. Open a card for per-part relic names, known acquisition locations, and Varzia offerings for regular Aya. This describes the full set, independently of your collection progress.
+
+The local server combines the public [WFCD relic database](https://github.com/WFCD/warframe-items) with the [official Warframe worldstate](https://api.warframe.com/cdn/worldState.php). It excludes premium Regal Aya bundles. Data is fetched on opening, every five minutes while visible, and when returning to the tab. **Refresh availability** requests an update, limited to once per minute. The interface shows when each source was fetched and the current Varzia rotation end. WFCD can lag behind game changes; mission access and event conditions still apply.
+
+**Vaulted does not mean purchase-only:** old relics can still be opened, traded, or used by squadmates. Missing, failed, expired or stale source data produces an unconfirmed status. Cached clues remain visible with a warning. The disposable `availability.json` cache is separate from player progress; no Warframe login or inventory access is involved.
+
 ### Personal goals
 
 The catalog now includes **Continue collecting**: each active goal shows an explained next step, source details where known, all remaining material requirements, and a personal note. Start with one frame; a full inventory is not required. Notes and the latest recorded change survive restarting and progress export/import.

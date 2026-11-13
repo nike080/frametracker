@@ -58,6 +58,10 @@ let state = empty();
 let tab = 'catalog';
 let group = 'all';
 let status = 'all';
+let availabilityFilter = 'all';
+let availabilitySort = 'catalog';
+let liveAvailability = { frames: {}, sources: {}, stale: true };
+let availabilityLoading = false;
 let search = '';
 let materialSearch = '';
 let onlyDeficit = false;
@@ -210,6 +214,62 @@ function goalsView() {
 function recordChange(kind, frame) {
   if (frame) state.lastChange = { kind, frameId: frame.id, at: new Date().toISOString() };
 }
+function availabilityBadge(frame) {
+  if (!frame.prime || frame.founder) return '';
+  const row = liveAvailability.frames[frame.id];
+  const status = row?.status ?? 'unknown';
+  return '<span class="availability-badge availability-' + status + '">' + t('availability_' + status) +
+    (row && status !== 'unknown' ? ' · ' + row.available + '/' + row.total : '') +
+    (row?.resurgence ? ' · ' + t('resurgence') : '') + '</span>';
+}
+function availabilityToolbar() {
+  const dates = Object.values(liveAvailability.sources).filter(Boolean).map(value => new Date(value).toLocaleString(locale()));
+  return '<section class="availability-panel availability-tools" aria-label="' + t('primeAvailability') + '"><h2>' + t('primeAvailability') + '</h2>' +
+    '<div class="toolbar"><label>' + t('availabilityFilter') + ' <select id="availability-filter">' +
+    ['all', 'available', 'partial', 'resurgence', 'vaulted', 'unknown'].map(value => '<option value="' + value + '">' + t(value === 'all' ? 'all' : value === 'resurgence' ? 'resurgence' : 'availability_' + value) + '</option>').join('') + '</select></label>' +
+    '<label>' + t('availabilitySort') + ' <select id="availability-sort"><option value="catalog">' + t('catalogOrder') + '</option><option value="availability">' + t('availabilityOrder') + '</option></select></label>' +
+    '<button id="refresh-availability"' + (availabilityLoading ? ' disabled' : '') + '>' + t(availabilityLoading ? 'availabilityLoading' : 'availabilityRefresh') + '</button></div>' +
+    '<p class="small muted" role="status">' + t(availabilityLoading ? 'availabilityLoading' : liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') +
+    (dates.length ? ' · ' + t('availabilityFetched') + ': ' + esc(dates.join(' / ')) : '') +
+    (liveAvailability.expiry ? ' · ' + t('rotationEnds') + ': ' + esc(new Date(liveAvailability.expiry).toLocaleString(locale())) : '') + '</p>' +
+    '<p class="small muted">' + t('vaultExplanation') + ' ' + link('https://github.com/WFCD/warframe-items', 'WFCD') + ' · ' + link('https://www.warframe.com/en/prime-resurgence', 'Prime Resurgence') + '</p></section>';
+}
+function availabilityDetails(frame) {
+  if (!frame.prime || frame.founder) return '';
+  const row = liveAvailability.frames[frame.id];
+  return '<section class="availability-panel"><h3>' + t('primeAvailability') + '</h3>' + availabilityBadge(frame) +
+    '<p class="small muted">' + t(liveAvailability.stale ? 'availabilityStale' : 'availabilityFresh') + ' ' + t('vaultExplanation') + '</p>' +
+    (row ? row.parts.map(part => {
+      const node = flatten(frame.recipe).find(node => node.id === part.id);
+      return '<details><summary>' + esc(catalogText(node, 'name')) + ' · ' + t('partAvailability_' + part.status) + '</summary>' +
+        (part.relics.length ? '<ul>' + part.relics.map(relic => '<li><strong>' + esc(relic.name) + '</strong> · ' + t(relic.channel === 'resurgence' ? 'resurgenceAya' : 'regularRelic') +
+          (relic.locations.length ? '<ul>' + relic.locations.map(where => '<li>' + esc(where) + '</li>').join('') + '</ul>' : '') + '</li>').join('') + '</ul>' : '<p>' + t(part.status === 'vaulted' ? 'noNewRelics' : 'availabilityStale') + '</p>') + '</details>';
+    }).join('') : '<p>' + t('availabilityStale') + '</p>') + '</section>';
+}
+async function refreshAvailability(force = false) {
+  if (availabilityLoading) return;
+  availabilityLoading = true;
+  const update = () => {
+    if (tab !== 'catalog') return;
+    const panel = app.querySelector('.availability-tools');
+    if (!panel) return;
+    panel.outerHTML = availabilityToolbar();
+    app.querySelector('#availability-filter').value = availabilityFilter;
+    app.querySelector('#availability-sort').value = availabilitySort;
+    renderCards();
+  };
+  update();
+  try {
+    const response = await fetch('/api/availability' + (force ? '?refresh=1' : ''));
+    if (!response.ok) throw new Error('Availability unavailable');
+    liveAvailability = await response.json();
+  } catch { liveAvailability = { ...liveAvailability, stale: true, frames: Object.fromEntries(Object.entries(liveAvailability.frames).map(([id, row]) => [id, { ...row, status: 'unknown', parts: row.parts.map(part => ({ ...part, status: 'unknown' })) }])) }; }
+  finally {
+    availabilityLoading = false;
+    update();
+    if (dialog.open && frameId && !dialog.contains(document.activeElement)) renderDetail(byId.get(frameId), true);
+  }
+}
 function sourceView(frame, action) {
   const node = action.node;
   const item = action.id ? materials[action.id] : node;
@@ -268,9 +328,11 @@ function catalogView() {
     '<div class="toolbar catalog-toolbar"><label class="search"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="' + t('search') + '" aria-label="' + t('search') + '" aria-describedby="search-hint" value="' + esc(search) + '"></label>' +
     '<div class="segments" aria-label="' + t('frameType') + '">' + [['all',t('all')],['standard',t('standardPlural')],['prime','Prime']].map(([value,label]) => '<button data-group="' + value + '">' + label + '</button>').join('') + '</div>' +
     '<select id="status" aria-label="' + t('collectionStatus') + '"><option value="all">' + t('anyStatus') + '</option><option value="missing">' + t('notCollected') + '</option><option value="none">' + t('notStarted') + '</option><option value="started">' + t('inProgress') + '</option><option value="done">' + t('collected') + '</option></select><button id="reset-filters">' + t('resetFilters') + '</button></div>' +
-    assistantView() + '<p id="search-hint" class="small muted">' + t('englishNames') + '</p>' + goalsView() + '<p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
+    availabilityToolbar() + assistantView() + '<p id="search-hint" class="small muted">' + t('englishNames') + '</p>' + goalsView() + '<p id="count" class="small muted" aria-live="polite"></p><div id="cards" class="grid"></div>' +
     '<p class="catalog-version small muted">' + link('https://www.warframe.com/en/patch-notes', 'Warframe ' + gameVersion) + ' · ' + new Date(date + 'T12:00:00Z').toLocaleDateString(locale(), { timeZone: 'UTC' }) + '</p></section>';
   app.querySelector('#status').value = status;
+  app.querySelector('#availability-filter').value = availabilityFilter;
+  app.querySelector('#availability-sort').value = availabilitySort;
   renderCards();
 }
 function renderCards() {
@@ -282,10 +344,16 @@ function renderCards() {
   }
   const shown = frames.filter(frame => {
     const { done, have } = collected(frame, state);
-    return (group === 'all' || frame.prime === (group === 'prime')) &&
+    const availability = liveAvailability.frames[frame.id];
+    return (availabilityFilter === 'all' || frame.prime && !frame.founder && (availabilityFilter === 'resurgence' ? availability?.resurgence : (availability?.status ?? 'unknown') === availabilityFilter)) &&
+      (group === 'all' || frame.prime === (group === 'prime')) &&
       (status === 'all' || status === 'done' && done || status === 'missing' && !done || status === 'none' && !done && have === 0 || status === 'started' && !done && have > 0) &&
       (frame.name.toLocaleLowerCase().includes(searchKey) || searchKey === 'прайм' && frame.prime);
   });
+  if (availabilitySort === 'availability') {
+    const rank = frame => frame.prime && !frame.founder ? ({ available: 0, partial: 1, vaulted: 2, unknown: 3 }[liveAvailability.frames[frame.id]?.status ?? 'unknown']) : 4;
+    shown.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+  }
   app.querySelector('#count').textContent = t('count', { shown: n(shown.length), total: n(frames.length) });
   app.querySelector('#cards').innerHTML = shown.length ? shown.map(frame => {
     const { done, have, total } = collected(frame, state);
@@ -293,7 +361,7 @@ function renderCards() {
     const info = total ? stage(frame) + ' · ' + have + ' / ' + total : t('founderExclusive');
     return '<button class="card" data-frame="' + esc(frame.id) + '">' + portrait(frame) +
       '<span class="card-name"><span>' + esc(frame.name) + '</span><span aria-hidden="true">↗</span></span>' +
-      '<span class="card-progress"><span>' + info + '</span><span class="line"><i style="width:' + percent + '%"></i></span></span></button>';
+      availabilityBadge(frame) + '<span class="card-progress"><span>' + info + '</span><span class="line"><i style="width:' + percent + '%"></i></span></span></button>';
   }).join('') : '<p class="empty" style="grid-column:1/-1">' + t('noFramesFiltered') + '</p>';
 }
 function stage(frame) {
@@ -453,7 +521,7 @@ function renderDetail(frame, keep = false) {
     '</div><button class="close" aria-label="' + t('close') + '" id="close">×</button></div><div class="detail-body">' +
     '<label class="owned"><input class="check" type="checkbox" id="owned"' + (saved.done ? ' checked' : '') +
     '> <strong>' + t('frameOwned') + '</strong>' + (progress.total ? '<span class="muted small"> · ' + progress.have + ' / ' + progress.total + '</span>' : '') + '</label>' +
-    '<div class="toolbar">' + (frame.recipe ? '<button id="toggle-goal" aria-pressed="' + state.goals.includes(frame.id) + '">' + t(state.goals.includes(frame.id) ? 'goalRemove' : 'goalAdd') + '</button>' : '') + undoButton('undo-detail') + '</div>' +
+    availabilityDetails(frame) + '<div class="toolbar">' + (frame.recipe ? '<button id="toggle-goal" aria-pressed="' + state.goals.includes(frame.id) + '">' + t(state.goals.includes(frame.id) ? 'goalRemove' : 'goalAdd') + '</button>' : '') + undoButton('undo-detail') + '</div>' +
     (frame.market ? '<div class="buy-line"><span class="gold">' + t('setLabel') + ' <strong data-price="' + esc(frame.market) + '">' + priceLabel(frame.market) + '</strong></span> ' +
       marketLink(frame.market, 'Warframe.market') + ' <button class="buy" id="refresh-frame">' + t('checkPrices') + '</button></div>' +
       '<label class="small">' + t('actualPurchase') + ' ' + numberInput('id="paid" placeholder="—"', saved.paid ?? '', t('actualPurchase')) +
@@ -555,6 +623,8 @@ function changed(event) {
     else delete state.notes[frame.id];
     recordChange('note', frame); void save(); renderPage(); return;
   }
+  if (input.id === 'availability-filter') { availabilityFilter = input.value; renderCards(); return; }
+  if (input.id === 'availability-sort') { availabilitySort = input.value; renderCards(); return; }
   if (input.id === 'resource-scope') { resourceScope = input.value; inventoryView(); return; }
   if (input.id === 'status') { status = input.value; renderCards(); return; }
   if (!input.matches('[data-stock], [data-fill], [data-part], #owned, #paid')) return;
@@ -609,7 +679,8 @@ app.addEventListener('click', event => {
   }
   if (button.dataset.quick) { quickUpdate(button); return; }
   if (button.dataset.frame) openFrame(button.dataset.frame, button);
-  if (button.id === 'reset-filters') { group = 'all'; status = 'all'; search = ''; catalogView(); app.querySelector('#search').focus(); }
+  if (button.id === 'refresh-availability') { void refreshAvailability(true); return; }
+  if (button.id === 'reset-filters') { group = 'all'; status = 'all'; search = ''; availabilityFilter = 'all'; availabilitySort = 'catalog'; catalogView(); app.querySelector('#search').focus(); }
   if (button.id === 'deficit-filter') { onlyDeficit = !onlyDeficit; button.setAttribute('aria-pressed', onlyDeficit); filterMaterials(); }
   if (button.id === 'reset-materials') { materialSearch = ''; onlyDeficit = false; inventoryView(); app.querySelector('#material-search').focus(); }
   if (button.dataset.group) { group = button.dataset.group; renderCards(); }
@@ -682,6 +753,9 @@ document.querySelector('#file').addEventListener('change', async event => {
 pageMessage = undefined;
 window.addEventListener('hashchange', route);
 route();
+void refreshAvailability();
+setInterval(() => { if (!document.hidden) void refreshAvailability(); }, 300000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) void refreshAvailability(); });
 fetch('/api/prices').then(response => response.json()).then(saved => {
   quotes = { ...saved, ...quotes };
   if (tab === 'summary' && !batch) summaryView();
